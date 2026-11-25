@@ -8,6 +8,7 @@ import { AlertSettingsForm } from "@/components/alert-settings-form";
 import { AddToListForm } from "@/components/list-forms";
 import { getLists } from "@/lib/lists";
 import { ManualPriceForm } from "@/components/manual-price-form";
+import { AddLinkForm, RenameProductForm } from "@/components/manual-product-forms";
 import { PriceBlock } from "@/components/price-block";
 import { VerdictPanel } from "@/components/verdict";
 import { PriceHistoryChart } from "@/components/price-history-chart";
@@ -88,6 +89,9 @@ export default async function ProductoPage({
           <div className="min-w-0">
             {p.brand && <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{p.brand}</p>}
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">{p.name}</h1>
+            <div className="-ml-3 mt-1">
+              <RenameProductForm productId={p.productId} name={p.name} />
+            </div>
             {p.best && !pending && (
               <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock aria-hidden className="size-4" />
@@ -162,6 +166,10 @@ export default async function ProductoPage({
           {p.listings.map((l) => (
             <StoreRow key={l.id} listing={l} fake={p.insights.fake[l.id]?.message} />
           ))}
+          <div className="pt-4">
+            <p className="mb-2 text-sm font-medium">¿Lo viste en otra tienda?</p>
+            <AddLinkForm productId={p.productId} />
+          </div>
         </CardContent>
       </Card>
 

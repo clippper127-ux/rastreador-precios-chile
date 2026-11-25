@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Search } from "lucide-react";
+import { LayoutGrid, PackagePlus, Plus, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
@@ -29,6 +29,12 @@ export default async function SeguimientosPage() {
               Seguir un producto
             </Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link href="/seguimientos/nuevo">
+              <PackagePlus aria-hidden />
+              Crear producto a mano
+            </Link>
+          </Button>
         </EmptyState>
       </>
     );
@@ -43,6 +49,12 @@ export default async function SeguimientosPage() {
           <>
             <Button asChild variant="outline">
               <Link href="/listas">Mis listas</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/seguimientos/nuevo">
+                <PackagePlus aria-hidden />
+                Producto a mano
+              </Link>
             </Button>
             <Button asChild>
               <Link href="/">

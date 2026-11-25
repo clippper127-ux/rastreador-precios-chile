@@ -39,6 +39,22 @@ export async function ensureTracked(
 ): Promise<{ productId: string; listingId: string }> {
   return db.transaction(async (tx) => {
     let listing = await tx.query.listings.findFirst({ where: eq(schema.listings.url, ref.url) });
+    if (listing && intoProductId && listing.productId !== intoProductId) {
+      // El link ya existe en otro producto. Se mueve solo si no le quita nada a nadie:
+      // ese producto tiene únicamente este link y ninguna otra persona lo sigue.
+      const oldId = listing.productId;
+      const [counts] = (await tx.execute(sql`
+        select
+          (select count(*) from watches where product_id = ${oldId} and user_id <> ${userId})::int as others,
+          (select count(*) from listings where product_id = ${oldId})::int as links
+      `)) as unknown as { others: number; links: number }[];
+      if (counts?.others === 0 && counts.links === 1) {
+        await tx.update(schema.listings).set({ productId: intoProductId }).where(eq(schema.listings.id, listing.id));
+        await tx.delete(schema.watches).where(and(eq(schema.watches.userId, userId), eq(schema.watches.productId, oldId)));
+        await tx.delete(schema.products).where(eq(schema.products.id, oldId));
+        listing = { ...listing, productId: intoProductId };
+      }
+    }
     if (!listing) {
       const name = hint?.title ?? `Pendiente: ${slugTitle(ref.url, ref.storeName)}`;
       const [product] = intoProductId
