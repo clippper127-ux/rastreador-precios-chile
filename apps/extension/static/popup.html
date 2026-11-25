@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es-CL">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rastreador de precios</title>
+    <style>
+      :root { --bg:#fff; --fg:#1e2230; --muted:#646b7d; --border:#dfe2ea; --brand:#4f46e5; --deal:#0f8a5f; --danger:#c2362b; --soft:#f3f4f8; color-scheme: light dark; }
+      @media (prefers-color-scheme: dark) { :root { --bg:#1b1e27; --fg:#eef0f5; --muted:#a3a9b8; --border:#2e3240; --brand:#8b85ff; --deal:#4fd1a1; --danger:#ff8a80; --soft:#252935; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; width: 320px; background: var(--bg); color: var(--fg); font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      h1 { font-size: 16px; margin: 0; letter-spacing: -.01em; }
+      p { margin: 0; color: var(--muted); }
+      label { font-weight: 600; display: flex; flex-direction: column; gap: 6px; }
+      input { font: inherit; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); padding: 0 10px; }
+      input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+      button { font: inherit; font-weight: 600; height: 36px; border-radius: 999px; border: 0; background: var(--fg); color: var(--bg); cursor: pointer; }
+      button:disabled { opacity: .6; }
+      #status { font-weight: 600; min-height: 1.4em; }
+      #status.ok { color: var(--deal); } #status.err { color: var(--danger); }
+      small { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Rastreador de precios</h1>
+      <p>Pega el token que generas en la app, en <strong>Ajustes → Extensión de navegador</strong>.</p>
+      <form id="form">
+        <label>Dirección de la app <input id="apiUrl" type="url" required placeholder="http://localhost:3000" /></label>
+        <br />
+        <label>Token <input id="token" type="password" autocomplete="off" required placeholder="rpe_…" /></label>
+        <br />
+        <button id="save" type="submit">Guardar y probar</button>
+      </form>
+      <p id="status" role="status" aria-live="polite"></p>
+      <small>Solo lee fichas de producto de Falabella, Paris, Ripley y Lider, y solo guarda precios de lo que sigues.</small>
+    </main>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

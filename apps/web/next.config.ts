@@ -1,0 +1,20 @@
+import { config } from "dotenv";
+import type { NextConfig } from "next";
+
+// Un solo `.env` en la raíz del monorepo para web, worker y db. En Vercel se usan sus Environment Variables.
+config({ path: "../../.env", quiet: true });
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["@rastreador/core", "@rastreador/db"],
+  images: {
+    // Imágenes de producto de las tiendas. Se amplía al agregar adaptadores.
+    remotePatterns: [
+      { protocol: "https", hostname: "**.mlstatic.com" },
+      { protocol: "https", hostname: "**.falabella.com" },
+      { protocol: "https", hostname: "**.paris.cl" },
+      { protocol: "https", hostname: "**.ripley.cl" },
+    ],
+  },
+};
+
+export default nextConfig;

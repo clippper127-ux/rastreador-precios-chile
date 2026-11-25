@@ -1,0 +1,23 @@
+{
+  "name": "@rastreador/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "once": "tsx src/once.ts",
+    "check:store": "tsx src/check-store.ts",
+    "probe": "tsx src/probe.ts",
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rastreador/core": "workspace:*",
+    "@rastreador/db": "workspace:*",
+    "dotenv": "^17.0.0",
+    "drizzle-orm": "^0.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0"
+  }
+}

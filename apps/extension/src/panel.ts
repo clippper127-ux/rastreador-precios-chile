@@ -1,0 +1,180 @@
+import { formatCLP, type CapturedProduct, type ExtensionStore } from "@rastreador/core";
+import type { IngestResponse } from "./shared";
+
+/*
+ * Panel flotante en la ficha de producto. Shadow DOM para no heredar ni romper estilos de la tienda.
+ * Estados: leyendo → (sin configurar | no seguido + "Seguir precio" | seguido + historial) | error.
+ */
+
+export interface PanelProps {
+  store: ExtensionStore;
+  capture: CapturedProduct | null;
+  state: IngestResponse;
+  busy?: boolean;
+  onFollow: () => void;
+}
+
+const CSS = `
+:host { all: initial; }
+* { box-sizing: border-box; }
+.wrap {
+  --bg: #ffffff; --fg: #1e2230; --muted: #646b7d; --border: #e3e6ee; --brand: #4f46e5; --deal: #0f8a5f;
+  --card: #8a3fd1; --caution: #9a6300; --danger: #c2362b; --soft: #f3f4f8;
+  position: fixed; right: 16px; bottom: 16px; z-index: 2147483646; width: 300px; max-width: calc(100vw - 32px);
+  font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 2px 4px rgba(20,22,30,.06), 0 16px 40px -12px rgba(20,22,30,.25);
+}
+@media (prefers-color-scheme: dark) {
+  .wrap { --bg: #1b1e27; --fg: #eef0f5; --muted: #a3a9b8; --border: #2e3240; --brand: #8b85ff; --deal: #4fd1a1;
+    --card: #c79bf5; --caution: #f0c060; --danger: #ff8a80; --soft: #252935; }
+}
+header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.logo { width: 22px; height: 22px; border-radius: 7px; background: var(--fg); display: grid; place-items: center; flex: none; }
+.logo svg { width: 14px; height: 14px; }
+.title { font-weight: 600; flex: 1; min-width: 0; }
+.title small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+button { font: inherit; cursor: pointer; border: 0; }
+.icon { background: transparent; color: var(--muted); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+.icon:hover { background: var(--soft); color: var(--fg); }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.price { font-size: 22px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.strike { color: var(--muted); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+.cardp { color: var(--card); font-weight: 600; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); font-size: 12px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+.ok { background: color-mix(in srgb, var(--deal) 14%, transparent); color: var(--deal); }
+.warn { background: color-mix(in srgb, var(--caution) 16%, transparent); color: var(--caution); }
+.err { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.primary { background: var(--fg); color: var(--bg); border-radius: 999px; height: 36px; padding: 0 16px; font-weight: 600; width: 100%; }
+.primary:disabled { opacity: .6; cursor: default; }
+a { color: var(--brand); text-decoration: none; font-weight: 600; }
+a:hover { text-decoration: underline; }
+svg.spark { width: 100%; height: 36px; display: block; }
+.pill { position: fixed; right: 16px; bottom: 16px; z-index: 2147483646; }
+.pill button { display: flex; align-items: center; gap: 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--border);
+  border-radius: 999px; padding: 8px 12px 8px 8px; font-weight: 600; box-shadow: 0 8px 24px -8px rgba(20,22,30,.3); }
+`;
+
+const LOGO = `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 21l5-5 4 3.5 8-9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:var(--bg)"/></svg>`;
+
+const ERRORS: Record<string, string> = {
+  sin_configurar: "Conecta la extensión: abre su ícono y pega tu token (Ajustes en la app).",
+  token_invalido: "El token no es válido. Genera uno nuevo en Ajustes de la app.",
+  sin_conexion: "No pudimos conectar con la app. ¿Está abierta?",
+  no_leido: "No pudimos leer el precio en esta página. Puedes ingresarlo a mano en la app.",
+  demasiadas_solicitudes: "Demasiadas actualizaciones seguidas. Intenta en un minuto.",
+  extension_recargada: "La extensión se actualizó. Recarga la página.",
+};
+
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+function spark(points: { t: number; price: number }[]): string {
+  if (points.length < 2) return "";
+  const xs = points.map((p) => p.t);
+  const ys = points.map((p) => p.price);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const W = 276, H = 36, pad = 3;
+  const x = (t: number) => (x1 === x0 ? 0 : ((t - x0) / (x1 - x0)) * W);
+  const y = (v: number) => (y1 === y0 ? H / 2 : pad + (1 - (v - y0) / (y1 - y0)) * (H - pad * 2));
+  // Escalón: el precio se mantiene hasta el siguiente cambio.
+  let d = `M${x(points[0]!.t)},${y(points[0]!.price)}`;
+  for (let i = 1; i < points.length; i++) d += ` H${x(points[i]!.t)} V${y(points[i]!.price)}`;
+  const trend = ys[ys.length - 1]! < ys[0]! ? "var(--deal)" : ys[ys.length - 1]! > ys[0]! ? "var(--danger)" : "var(--muted)";
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${trend}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+let host: HTMLElement | null = null;
+let collapsed = false;
+let lastProps: PanelProps | null = null;
+
+void chrome.storage.local.get("collapsed").then((s) => {
+  collapsed = !!s.collapsed;
+  if (lastProps) renderPanel(lastProps);
+});
+
+function setCollapsed(v: boolean) {
+  collapsed = v;
+  void chrome.storage.local.set({ collapsed: v });
+  if (lastProps) renderPanel(lastProps);
+}
+
+export function renderPanel(props: PanelProps | null) {
+  lastProps = props;
+  if (!props) {
+    host?.remove();
+    host = null;
+    return;
+  }
+  if (!host) {
+    host = document.createElement("rastreador-precios-panel");
+    host.attachShadow({ mode: "open" });
+    document.documentElement.appendChild(host);
+  }
+  const root = host.shadowRoot!;
+  const { store, capture: c, state, busy } = props;
+
+  if (collapsed) {
+    root.innerHTML = `<style>${CSS}</style><div class="wrap pill" style="width:auto;border:0;background:none;box-shadow:none">
+      <button type="button" data-act="expand" aria-label="Mostrar panel de Rastreador">
+        <span class="logo">${LOGO}</span>${c ? esc(formatCLP(c.priceOffer ?? c.priceNormal)) : "Rastreador"}
+        ${state.tracked ? '<span class="badge ok">Siguiendo</span>' : ""}
+      </button></div>`;
+    root.querySelector('[data-act="expand"]')!.addEventListener("click", () => setCollapsed(false));
+    return;
+  }
+
+  const noCard = c ? (c.priceOffer ?? c.priceNormal) : undefined;
+  let status = "";
+  if (busy) status = `<p class="muted">Conectando…</p>`;
+  else if (state.error) status = `<p><span class="badge ${state.error === "sin_configurar" ? "warn" : "err"}">${state.error === "sin_configurar" ? "Sin conectar" : "Error"}</span></p><p class="muted">${esc(ERRORS[state.error] ?? `No se pudo guardar (${state.error}).`)}</p>`;
+  else if (state.tracked) {
+    const min = state.minPrice90d != null ? `Mínimo 90 días: <strong>${esc(formatCLP(state.minPrice90d))}</strong>` : "";
+    const atMin = state.minPrice90d != null && noCard != null && noCard <= state.minPrice90d;
+    status = `<p class="row"><span class="badge ok">✓ Siguiendo</span><span class="muted">${state.changed ? "Precio nuevo guardado" : "Precio sin cambios"}</span></p>
+      ${spark(state.points ?? [])}
+      <p class="muted">${min}${atMin ? ' · <span class="badge ok">En su mínimo</span>' : ""}</p>
+      ${state.productId && state.appUrl ? `<a href="${esc(state.appUrl)}/producto/${esc(state.productId)}" target="_blank" rel="noopener">Ver historial completo →</a>` : ""}`;
+  } else {
+    status = `<button type="button" class="primary" data-act="follow">Seguir precio</button>
+      <p class="muted">Guardaremos el precio cada vez que abras esta ficha.</p>`;
+  }
+
+  root.innerHTML = `<style>${CSS}</style>
+  <section class="wrap" role="region" aria-label="Rastreador de precios">
+    <header>
+      <span class="logo">${LOGO}</span>
+      <span class="title">Rastreador<small>${esc(store.name)}</small></span>
+      <button type="button" class="icon" data-act="collapse" aria-label="Minimizar panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="body">
+      ${
+        c
+          ? `<div>
+          <div class="row"><span class="price">${esc(formatCLP(noCard))}</span>${c.priceOffer != null && c.priceNormal != null ? `<span class="strike">${esc(formatCLP(c.priceNormal))}</span>` : ""}</div>
+          ${c.priceCard != null ? `<div class="cardp">${esc(formatCLP(c.priceCard))} <span class="muted">con ${esc(c.cardName ?? "tarjeta")}</span></div>` : ""}
+          ${c.sellerType === "third_party" ? `<p class="muted">Vendido por un tercero${c.seller ? `: ${esc(c.seller)}` : ""}</p>` : ""}
+          ${c.stockStatus === "out_of_stock" ? `<span class="badge err">Sin stock</span>` : ""}
+        </div>`
+          : ""
+      }
+      ${status}
+    </div>
+  </section>`;
+
+  root.querySelector('[data-act="collapse"]')?.addEventListener("click", () => setCollapsed(true));
+  const follow = root.querySelector<HTMLButtonElement>('[data-act="follow"]');
+  if (follow) {
+    follow.addEventListener("click", () => {
+      follow.disabled = true;
+      follow.textContent = "Siguiendo…";
+      props.onFollow();
+    });
+  }
+}

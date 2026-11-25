@@ -1,0 +1,35 @@
+name: Worker
+
+# Una pasada cada 4 horas (UTC). GitHub puede atrasar los cron unos minutos: es normal.
+# También se puede lanzar a mano desde la pestaña Actions → Worker → Run workflow.
+on:
+  schedule:
+    - cron: "17 */4 * * *"
+  workflow_dispatch:
+
+# Nunca dos pasadas a la vez (además de los locks en Postgres).
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Pasada del worker
+        run: pnpm worker:once
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+          WORKER_USER_AGENT: ${{ vars.WORKER_USER_AGENT }}

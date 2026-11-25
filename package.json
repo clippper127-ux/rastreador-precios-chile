@@ -1,0 +1,34 @@
+{
+  "name": "rastreador-precios",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @rastreador/web dev",
+    "build": "pnpm --filter @rastreador/web build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "worker:once": "pnpm --filter @rastreador/worker once",
+    "check:store": "pnpm --filter @rastreador/worker check:store",
+    "db:generate": "pnpm --filter @rastreador/db generate",
+    "db:migrate": "pnpm --filter @rastreador/db migrate",
+    "db:seed": "pnpm --filter @rastreador/db seed",
+    "db:verify": "pnpm --filter @rastreador/db verify"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@next/eslint-plugin-next": "^16.0.0",
+    "eslint": "^9.30.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.6.0",
+    "prettier-plugin-tailwindcss": "^0.6.14",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.40.0",
+    "vitest": "^3.2.0"
+  }
+}

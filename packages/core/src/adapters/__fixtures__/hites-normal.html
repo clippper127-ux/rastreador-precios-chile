@@ -1,0 +1,341 @@
+<!-- Fixture recortado por apps/worker/src/fixtures.ts: JSON-LD + bloques de precio originales -->
+<html><head>
+<script type="application/ld+json">
+                    {"@context":"http://schema.org/","@type":"Product","name":"Audífonos Manos Libres Bluetooth Compatible Con Ps3 - Ps","description":"Audífonos Manos Libres Bluetooth Compatible Con Ps3 - Ps","mpn":"10173000065001","sku":"10173000065001","brand":{"@type":"Brand","name":"PUNTOSTORE"},"image":["https://www.hites.com/dw/image/v2/BDPN_PRD/on/demandware.static/-/Sites-mastercatalog_HITES/default/dw9b8b6ba6/images/original/mkp/1017300006500/10173000065001_1.jpg?sw=2000&sh=2000","https://www.hites.com/dw/image/v2/BDPN_PRD/on/demandware.static/-/Sites-mastercatalog_HITES/default/dwc4c38bbe/images/original/mkp/1017300006500/10173000065001_2.jpg?sw=2000&sh=2000","https://www.hites.com/dw/image/v2/BDPN_PRD/on/demandware.static/-/Sites-mastercatalog_HITES/default/dw3d2c7818/images/original/mkp/1017300006500/10173000065001_3.jpg?sw=2000&sh=2000"],"offers":{"url":"https://www.hites.com/audifonos-manos-libres-bluetooth-compatible-con-ps3---ps-10173000065001.html","@type":"Offer","priceCurrency":"CLP","price":"13490","availability":"http://schema.org/InStock"}}
+                </script>
+<script type="application/ld+json">
+                    {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":{"@id":"https://www.hites.com/tecnologia/","name":"Tecnología"}},{"@type":"ListItem","position":2,"item":{"@id":"https://www.hites.com/tecnologia/audio/","name":"Audio"}},{"@type":"ListItem","position":3,"item":{"@id":"https://www.hites.com/tecnologia/audio/audifonos/","name":"Audífonos"}},{"@type":"ListItem","position":4,"item":{"@id":"https://www.hites.com/audifonos-manos-libres-bluetooth-compatible-con-ps3---ps-10173000065001.html","name":"Audífonos Manos Libres Bluetooth Compatible Con Ps3 - Ps"}}]}
+                </script>
+<script type="application/ld+json">
+                    {"@context":"https://schema.org","@type":"Organization","url":"https://www.hites.com/","logo":"https://www.hites.com/on/demandware.static/Sites-HITES-Site/-/default/dwb057503e/images/logo.svg","contactPoint":[{"@type":"ContactPoint","telephone":"600 550 6000","contactType":"customer service"},{"@type":"ContactPoint","telephone":"600 550 5000","contactType":"sell service"}]}
+                </script>
+<script type="application/ld+json">
+                    {"@context":"https://schema.org","@type":"Store","image":["https://www.hites.com/on/demandware.static/-/Library-Sites-HITESSharedLibrary/default/dw3114b88c/images/favicon/favicon.svg"],"@id":"","name":"Hites","address":{"@type":"PostalAddress","streetAddress":"","addressLocality":"","addressRegion":"","postalCode":"","addressCountry":""},"geo":{"@type":"GeoCoordinates","latitude":"","longitude":""},"url":"https://www.hites.com","telephone":"","openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Friday"],"opens":"08:00","closes":"22:00"}]}
+                </script>
+</head><body>
+<section data-fixture-block>
+<div class="prices">
+<div class="price">
+<h5 class="price-item list strike-through only-normal-price">
+<span class="value" content="13490">
+<span class="sr-only">
+Price reduced from
+</span>
+$13.490
+<span class="sr-only">
+to
+</span>
+</span>
+</h5>
+</div>
+</div>
+</div>
+</div>
+</div>
+<hr class="d-block"/>
+</div>
+</div>
+<div class="recommendations recommendation-slider-wrapper big-arrows d-none d-lg-block">
+<!-- =============== This snippet of JavaScript handles fetching the dynamic recommendations from the remote recommendations server
+and then makes a call to render the configured template with the returned recommended products: ================= -->
+<script>
+(function(){
+// window.CQuotient is provided on the page by the Analytics code:
+var cq = window.CQuotient;
+var dc = window.DataCloud;
+var isCQ = false;
+var isDC = false;
+if (cq && ('function' == typeof cq.getCQUserId)
+&& ('function' == typeof cq.getCQCookieId)
+&& ('function' == typeof cq.getCQHashedEmail)
+&& ('function' == typeof cq.getCQHashedLogin)) {
+isCQ = true;
+}
+if (dc && ('function' == typeof dc.getDCUserId)) {
+isDC = true;
+}
+if (isCQ || isDC) {
+var recommender = '[[&quot;product-to-product&quot;]]';
+var slotRecommendationType = decodeHtml('RECOMMENDATION');
+// removing any leading/trailing square brackets and escaped quotes:
+recommender = recommender.replace(/\[|\]|&quot;/g, '');
+var separator = '|||';
+var slotConfigurationUUID = '0ea48c2899d38a1bf88cad2afc';
+var contextAUID = decodeHtml('10173000065001');
+var contextSecondaryAUID = decodeHtml('');
+var contextAltAUID = decodeHtml('');
+var contextType = decodeHtml('');
+var anchorsArray = [];
+var contextAUIDs = contextAUID.split(separator);
+var contextSecondaryAUIDs = contextSecondaryAUID.split(separator);
+var contextAltAUIDs = contextAltAUID.split(separator);
+var contextTypes = contextType.split(separator);
+var slotName = decodeHtml('product-recommendations-m');
+var slotConfigId = decodeHtml('product-recommendations-m');
+var slotConfigTemplate = decodeHtml('slots/content/pdp-recommendedProducts.isml');
+if (contextAUIDs.length == contextSecondaryAUIDs.length) {
+for (i = 0; i < contextAUIDs.length; i++) {
+anchorsArray.push({
+id: contextAUIDs[i],
+sku: contextSecondaryAUIDs[i],
+type: contextTypes[i],
+alt_id: contextAltAUIDs[i]
+});
+}
+} else {
+anchorsArray = [{id: contextAUID, sku: contextSecondaryAUID, type: contextType, alt_id: contextAltAUID}];
+}
+var urlToCall = '/on/demandware.store/Sites-HITES-Site/default/CQRecomm-Start';
+var params = null;
+if (isCQ) {
+params = {
+userId: cq.getCQUserId(),
+cookieId: cq.getCQCookieId(),
+emailId: cq.getCQHashedEmail(),
+loginId: cq.getCQHashedLogin(),
+anchors: anchorsArray,
+slotId: slotName,
+slotConfigId: slotConfigId,
+slotConfigTemplate: slotConfigTemplate,
+ccver: '1.03'
+};
+}
+// console.log("Recommendation Type - " + slotRecommendationType + ", Recommender Selected - " + recommender);
+if (isDC && slotRecommendationType == 'DATA_CLOUD_RECOMMENDATION') {
+// Set DC variables for API call
+dcIndividualId = dc.getDCUserId();
+dcUrl = dc.getDCPersonalizationPath();
+if (dcIndividualId && dcUrl && dcIndividualId != '' && dcUrl != '') {
+// console.log("Fetching CDP Recommendations");
+var productRecs = {};
+productRecs[recommender] = getCDPRecs(dcUrl, dcIndividualId, recommender);
+cb(productRecs);
+}
+} else if (isCQ && slotRecommendationType != 'DATA_CLOUD_RECOMMENDATION') {
+if (cq.getRecs) {
+cq.getRecs(cq.clientId, recommender, params, cb);
+} else {
+cq.widgets = cq.widgets || [];
+cq.widgets.push({
+recommenderName: recommender,
+parameters: params,
+callback: cb
+});
+}
+}
+};
+function decodeHtml(html) {
+var txt = document.createElement("textarea");
+txt.innerHTML = html;
+return txt.value;
+}
+function cb(parsed) {
+var arr = parsed[recommender].recs;
+if (arr && 0 < arr.length) {
+var filteredProductIds = '';
+for (i = 0; i < arr.length; i++) {
+filteredProductIds = filteredProductIds + 'pid' + i + '=' + encodeURIComponent(arr[i].id) + '&';
+}
+filteredProductIds = filteredProductIds.substring(0, filteredProductIds.length - 1);//to remove the trailing '&'
+var formData = 'auid=' + encodeURIComponent(contextAUID)
++ '&scid=' + slotConfigurationUUID
++ '&' + filteredProductIds;
+var request = new XMLHttpRequest();
+request.open('POST', urlToCall, true);
+request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+request.onreadystatechange = function() {
+if (this.readyState === 4) {
+// Got the product data from DW, showing the products now by changing the inner HTML of the DIV:
+var divId = 'cq_recomm_slot-' + slotConfigurationUUID;
+document.getElementById(divId).innerHTML = this.responseText;
+//find and evaluate scripts in response:
+var scripts = document.getElementById(divId).getElementsByTagName('script');
+if (null != scripts) {
+for (var i=0;i<scripts.length;i++) {//not combining script snippets on purpose
+var srcScript = document.createElement('script');
+srcScript.text = scripts[i].innerHTML;
+srcScript.asynch = scripts[i].asynch;
+srcScript.defer = scripts[i].defer;
+srcScript.type = scripts[i].type;
+srcScript.charset = scripts[i].charset;
+document.head.appendChild( srcScript );
+document.head.removeChild( srcScript );
+}
+}
+}
+};
+request.send(formData);
+request = null;
+}
+};
+})();
+</script>
+<!-- The DIV tag id below is unique on purpose in case there are multiple recommendation slots on the same .isml page: -->
+<div id="cq_recomm_slot-0ea48c2899d38a1bf88cad2afc"></div>
+<!-- ====================== snippet ends here ======================== -->
+</div>
+</div>
+<div class="col-12 col-lg-5 product-detai
+</section>
+<section data-fixture-block>
+<div class="prices">
+<div class="price">
+<h5 class="price-item list strike-through only-normal-price">
+<span class="value" content="13490">
+<span class="sr-only">
+Price reduced from
+</span>
+$13.490
+<span class="sr-only">
+to
+</span>
+</span>
+</h5>
+</div>
+</div>
+</div>
+</div>
+</div>
+<hr class="d-none d-lg-flex"/>
+<div class="promotions">
+</div>
+<div class="col-12 col-border-bottom px-0 px-md-3 px-lg-0 " data-foo="false">
+<div class="product-qty-cart pl-0 pr-0 pr-md-3 pl-md-3 pl-lg-0 pr-lg-0">
+<div class="row">
+<div class="col-5 col-lg-4 col-xl-3 product-qty-wrapper">
+<div class="hsg-qty-container">
+<label class="hsg-qty-label" for="quantity-1">Cantidad</label>
+<div class="hsg-qty-selector " data-isparent="true">
+<button type="button" disabled data-action="decrease" class="hsg-qty-change hsg-qty-decrease">
+-
+</button>
+<input type="text" name="quantity-10173000065001" class="hsg-qty-input quantity-select" value="1" data-maxorderqty="20" maxlength="1" readonly/>
+<button type="button" data-action="increase" class="hsg-qty-change hsg-qty-increase">
++
+</button>
+</div>
+</div>
+</div>
+<div class="col-7 col-lg-8 col-xl-9 row no-gutters prices-card justify-content-end">
+<div class="product-card-simulate col-12 without-hites-offer">
+<button type="button" class="card_simulate" data-toggle="modal" data-target="#cardModal">
+<svg class="card_simulate__icon icon">
+<use xlink:href="#tarjeta-hites"></use>
+</svg>
+<span class="card_simulate__text card_simulate__text__emphasis card-simulate-text">
+<span class="simulate-first"><strong class="card_simulate__text__subtitle">Simula tu cuota con tu Tarjeta Hites</strong></span>
+</span>
+</button>
+</div>
+</div>
+<div class="col-12 col-xl-6 product-actions-wrapper pl-xl-3">
+<input type="hidden" class="add-to-cart-url" value="/on/demandware.store/Sites-HITES-Site/default/Cart-AddProduct"/>
+<button  class="hsg-btn-buy hsg-btn add-to-cart     "
+data-gtm="{&quot;event&quot;:&quot;AddToCartPDP&quot;,&quot;eventTypes&quot;:&quot;hover,click&quot;,&quot;action&quot;:&quot;&quot;,&quot;label&quot;:&quot;https://www.hites.com/on/demandware.store/Sites-HITES-Site/default/Product-Show?pid=10173000065001&quot;}"
+data-ga4="{&quot;event_ga4&quot;:&quot;add_to_cart&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;value&quot;:13490,&quot;page_type&quot;:&quot;pdp&quot;,&quot;button_type&quot;:&quot;add_basket&quot;,&quot;item&quot;:{&quot;item_id&quot;:&quot;10173000065001&quot;,&quot;item_name&quot;:&quot;Aud&iacute;fonos Manos Libres Bluetooth Compatible Con Ps3 - Ps&quot;,&quot;item_brand&quot;:&quot;PUNTOSTORE&quot;,&quot;item_category&quot;:&quot;Aud&iacute;fonos&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;item_category2&quot;:&quot;Aud&iacute;fonos Inal&aacute;mbrico&quot;,&quot;item_category3&quot;:&quot;Aud&iacute;fonos&quot;,&quot;item_list_name&quot;:&quot;Aud&iacute;fonos&quot;,&quot;item_list_id&quot;:&quot;audifonos&quot;,&quot;hites_price&quot;:null,&quot;discount&quot;:&quot;0&quot;,&quot;price&quot;:13490,&quot;item_variant&quot;:&quot;10173000065001&quot;,&quot;promotion_id&quot;:&quot; &quot;,&quot;promotion_name&quot;:&quot; &quot;,&quot;marketplace&quot;:&quot;PuntoStore&quot;,&quot;report_area&quot;:&quot;10 - ELECTRO HOGAR&quot;,&quot;report_departamento&quot;:&quot;ACCESORIOS&quot;,&quot;report_seccion&quot;:&quot;&quot;,&quot;report_familia&quot;:&quot;ACC.ELECT.MENOR&quot;,&quot;report_marca&quot;:&quot;PUNTOSTORE&quot;}}"
+data-toggle="modal" data-target="#chooseBonusProductModal"
+data-pid="10173000065001"
+>
+Agregar a la bolsa
+<svg class="icon">
+<use xlink:href="#buy-arrow"></use>
+</svg>
+</button>
+<div class="availability-secondary-message">
+</div>
+<div class="d-none">
+</div>
+</div>
+<div class="col-12 col-xl-6 d-flex flex-nowrap product-actions-wrapper col-buynow-button">
+<input type="hidden" class="add-to-cart-url" value="/on/demandware.store/Sites-HITES-Site/default/Cart-AddProduct"/>
+<button  class="hsg-btn-buy hsg-btn-buynow form-control hsg-btn add-to-cart h-100     "
+data-gtm="{&quot;event&quot;:&quot;AddToCartPDP&quot;,&quot;eventTypes&quot;:&quot;hover,click&quot;,&quot;action&quot;:&quot;&quot;,&quot;label&quot;:&quot;https://www.hites.com/on/demandware.store/Sites-HITES-Site/default/Product-Show?pid=10173000065001&quot;}"
+data-ga4="{&quot;event_ga4&quot;:&quot;add_to_cart&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;value&quot;:13490,&quot;page_type&quot;:&quot;pdp&quot;,&quot;button_type&quot;:&quot;buy_now&quot;,&quot;item&quot;:{&quot;item_id&quot;:&quot;10173000065001&quot;,&quot;item_name&quot;:&quot;Aud&iacute;fonos Manos Libres Bluetooth Compatible Con Ps3 - Ps&quot;,&quot;item_brand&quot;:&quot;PUNTOSTORE&quot;,&quot;item_category&quot;:&quot;Aud&iacute;fonos&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;item_category2&quot;:&quot;Aud&iacute;fonos Inal&aa
+</section>
+<section data-fixture-block>
+<div class="prices js-update-price">
+<div class="price">
+<h5 class="price-item list strike-through only-normal-price">
+<span class="value" content="13490">
+<span class="sr-only">
+Price reduced from
+</span>
+$13.490
+<span class="sr-only">
+to
+</span>
+</span>
+</h5>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="container fixedbar-container">
+<div class="row fixedbar-data">
+<div class="col-6">
+<input type="hidden" class="add-to-cart-url" value="/on/demandware.store/Sites-HITES-Site/default/Cart-AddProduct"/>
+<button  class="hsg-btn-buy hsg-btn add-to-cart fixedBar    "
+data-gtm="{&quot;event&quot;:&quot;AddToCartPDP&quot;,&quot;eventTypes&quot;:&quot;hover,click&quot;,&quot;action&quot;:&quot;&quot;,&quot;label&quot;:&quot;https://www.hites.com/on/demandware.store/Sites-HITES-Site/default/Product-Show?pid=10173000065001&quot;}"
+data-ga4="{&quot;event_ga4&quot;:&quot;add_to_cart&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;value&quot;:13490,&quot;page_type&quot;:&quot;pdp&quot;,&quot;button_type&quot;:&quot;add_basket&quot;,&quot;item&quot;:{&quot;item_id&quot;:&quot;10173000065001&quot;,&quot;item_name&quot;:&quot;Aud&iacute;fonos Manos Libres Bluetooth Compatible Con Ps3 - Ps&quot;,&quot;item_brand&quot;:&quot;PUNTOSTORE&quot;,&quot;item_category&quot;:&quot;Aud&iacute;fonos&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;item_category2&quot;:&quot;Aud&iacute;fonos Inal&aacute;mbrico&quot;,&quot;item_category3&quot;:&quot;Aud&iacute;fonos&quot;,&quot;item_list_name&quot;:&quot;Aud&iacute;fonos&quot;,&quot;item_list_id&quot;:&quot;audifonos&quot;,&quot;hites_price&quot;:null,&quot;discount&quot;:&quot;0&quot;,&quot;price&quot;:13490,&quot;item_variant&quot;:&quot;10173000065001&quot;,&quot;promotion_id&quot;:&quot; &quot;,&quot;promotion_name&quot;:&quot; &quot;,&quot;marketplace&quot;:&quot;PuntoStore&quot;,&quot;report_area&quot;:&quot;10 - ELECTRO HOGAR&quot;,&quot;report_departamento&quot;:&quot;ACCESORIOS&quot;,&quot;report_seccion&quot;:&quot;&quot;,&quot;report_familia&quot;:&quot;ACC.ELECT.MENOR&quot;,&quot;report_marca&quot;:&quot;PUNTOSTORE&quot;}}"
+data-toggle="modal" data-target="#chooseBonusProductModal"
+data-pid="10173000065001"
+>
+Agregar a la bolsa
+<svg class="icon">
+<use xlink:href="#buy-arrow"></use>
+</svg>
+</button>
+<div class="availability-secondary-message">
+</div>
+<div class="d-none">
+</div>
+</div>
+<div class="col-6 col-buynow-button">
+<input type="hidden" class="add-to-cart-url" value="/on/demandware.store/Sites-HITES-Site/default/Cart-AddProduct"/>
+<button  class="hsg-btn-buy hsg-btn-buynow form-control hsg-btn add-to-cart h-100 fixedBar    "
+data-gtm="{&quot;event&quot;:&quot;AddToCartPDP&quot;,&quot;eventTypes&quot;:&quot;hover,click&quot;,&quot;action&quot;:&quot;&quot;,&quot;label&quot;:&quot;https://www.hites.com/on/demandware.store/Sites-HITES-Site/default/Product-Show?pid=10173000065001&quot;}"
+data-ga4="{&quot;event_ga4&quot;:&quot;add_to_cart&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;value&quot;:13490,&quot;page_type&quot;:&quot;pdp&quot;,&quot;button_type&quot;:&quot;buy_now&quot;,&quot;item&quot;:{&quot;item_id&quot;:&quot;10173000065001&quot;,&quot;item_name&quot;:&quot;Aud&iacute;fonos Manos Libres Bluetooth Compatible Con Ps3 - Ps&quot;,&quot;item_brand&quot;:&quot;PUNTOSTORE&quot;,&quot;item_category&quot;:&quot;Aud&iacute;fonos&quot;,&quot;currency&quot;:&quot;CLP&quot;,&quot;item_category2&quot;:&quot;Aud&iacute;fonos Inal&aacute;mbrico&quot;,&quot;item_category3&quot;:&quot;Aud&iacute;fonos&quot;,&quot;item_list_name&quot;:&quot;Aud&iacute;fonos&quot;,&quot;item_list_id&quot;:&quot;audifonos&quot;,&quot;hites_price&quot;:null,&quot;discount&quot;:&quot;0&quot;,&quot;price&quot;:13490,&quot;item_variant&quot;:&quot;10173000065001&quot;,&quot;promotion_id&quot;:&quot; &quot;,&quot;promotion_name&quot;:&quot; &quot;,&quot;marketplace&quot;:&quot;PuntoStore&quot;,&quot;report_area&quot;:&quot;10 - ELECTRO HOGAR&quot;,&quot;report_departamento&quot;:&quot;ACCESORIOS&quot;,&quot;report_seccion&quot;:&quot;&quot;,&quot;report_familia&quot;:&quot;ACC.ELECT.MENOR&quot;,&quot;report_marca&quot;:&quot;PUNTOSTORE&quot;}}"
+data-toggle="modal" data-target="#chooseBonusProductModal"
+data-pid="10173000065001"
+>
+Comprar ahora
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="row ms-no-margins">
+<div class="col-12">
+</div>
+</div>
+</div>
+<footer id="footercontent" class="footercontent">
+<div class="container">
+<div class="footer-container-bg row">
+<div class="footer-item col-sm-12 col-lg-2 collapsible-md">
+<div class="content-asset"><!-- dwMarker="content" dwContentID="a7e5168b50151818f06e77e7ff" -->
+<style>
+.product-detail-page .product-detail .recommendations-lastViewedProducts{
+margin: 0 auto;
+}
+.img-main-bundle-box .vf-open-btn-container {
+display: none;
+}
+</style>
+<script>
+var lastView = document.querySelector('.recommendations-lastViewedProducts');
+if(lastView && lastView.length) {
+lastView.classList.add('container');
+}
+var recommendation = document.querySelector('.recommendations-alsobought');
+if(recommendation && recommendation.length) {
+recommendation.classList.add('container');
+}
+</script>
+<div><button class="title btn text-left btn-block d-sm-none" aria-expanded="false" aria-controls="collapsible-tarjetahites">TARJETA HITES</but
+</section>
+</body></html>

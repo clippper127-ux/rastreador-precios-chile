@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Rastreador de precios",
+  "description": "Sigue y actualiza precios de Falabella, Paris, Ripley y Lider mientras navegas. Solo lee fichas de producto.",
+  "version": "0.1.0",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Rastreador de precios"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.falabella.com/falabella-cl/*",
+        "https://www.paris.cl/*",
+        "https://simple.ripley.cl/*",
+        "https://www.lider.cl/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

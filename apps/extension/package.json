@@ -1,0 +1,18 @@
+{
+  "name": "@rastreador/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rastreador/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.8",
+    "esbuild": "^0.28.2"
+  }
+}
