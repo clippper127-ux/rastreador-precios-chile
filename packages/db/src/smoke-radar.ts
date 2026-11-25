@@ -67,7 +67,7 @@ try {
 
   const notified = await notifyDealMatches(db, "http://localhost:3000", fake);
   check("4. Avisos enviados por Telegram (uno por coincidencia)", notified === 4 && sent.length === 4, { avisos: notified });
-  check("   El aviso trae canal, motivo y precio", sent[0]?.includes("Ofertas de prueba") && sent.some((t) => t.includes("$199.990")), "\n" + sent[0]);
+  check("   El aviso trae canal, motivo y precio", !!sent[0]?.includes("Ofertas de prueba") && sent.some((t) => t.includes("$199.990")), "\n" + sent[0]);
   const again2 = await notifyDealMatches(db, "http://localhost:3000", fake);
   check("   No se repiten", again2 === 0);
 } finally {

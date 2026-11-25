@@ -18,7 +18,8 @@
     "db:migrate": "pnpm --filter @rastreador/db migrate",
     "db:seed": "pnpm --filter @rastreador/db seed",
     "db:verify": "pnpm --filter @rastreador/db verify",
-    "radar:once": "pnpm --filter @rastreador/worker radar:once"
+    "radar:once": "pnpm --filter @rastreador/worker radar:once",
+    "db:admin": "pnpm --filter @rastreador/db admin"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

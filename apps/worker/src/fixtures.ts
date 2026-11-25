@@ -15,6 +15,11 @@ export function trimHtmlForFixture(html: string): string {
     if (blocks.length >= 12) break;
     blocks.push(html.slice(m.index!, m.index! + 6_000));
   }
+  // Fichas sin bloque .prices (p. ej. Jumbo): el <h1> y lo que sigue (precio, tachado, precio unitario).
+  if (!blocks.length) {
+    const h1 = html.search(/<h1[\s>]/);
+    if (h1 >= 0) blocks.push(html.slice(h1, h1 + 8_000).replace(/<svg[\s\S]*?<\/svg>/g, ""));
+  }
 
   const compact = (s: string) =>
     s

@@ -51,6 +51,7 @@ Sin variables de Supabase la app abre igual (sin login), útil para trabajar el 
 | `pnpm check:store <tienda> "<url>" [--save nombre]` | Prueba un adaptador a mano, sin tocar la DB; `--save` guarda un fixture recortado |
 | `pnpm --filter @rastreador/worker probe [tienda...]` | Sondea tiendas (robots, búsqueda, ficha) y genera `docs/sondeo-tiendas.md` |
 | `pnpm db:verify` | Revisa RLS, trigger de perfiles y tiendas activas |
+| `pnpm db:admin <correo>` | Te marca como administrador (pausar tiendas y reintentar bloqueos en **/estado**) |
 | `powershell -ExecutionPolicy Bypass -File scripts\entrar-sin-correo.ps1` | Solo dev: inicia sesión sin enviar correo (pide la secret key una vez) |
 
 ## Agregar una tienda
@@ -75,7 +76,7 @@ Reglas: respetar `robots.txt`, User-Agent honesto, nada con login, preferir dato
 ## Búsqueda unificada
 
 Escribe lo que buscas en el inicio. La app:
-- busca en el servidor donde se permite (hoy **Hites**; caché de 30 min, máx. 6 búsquedas/min por tienda);
+- busca en el servidor donde se permite (**Hites, Jumbo, Santa Isabel**; caché de 30 min, máx. 6 búsquedas/min por tienda);
 - muestra botones **Buscar en Falabella / Paris / Ripley / Lider / La Polar / Abcdin**: con la extensión,
   los resultados que ves en esas tiendas se suman solos a la comparación (la página se actualiza sola);
 - agrupa el mismo producto entre tiendas (por EAN o marca + modelo + título, sin IA) y ordena por precio;
@@ -121,7 +122,7 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
 - **Frecuencia:** el workflow `Radar` corre cada hora (`pnpm radar:once`, liviano). En tu PC puedes
   correrlo más seguido. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 
-## Extensión de navegador (Falabella, Paris, Ripley, Lider)
+## Extensión de navegador (Falabella, Sodimac, Tottus, Paris, Ripley, Lider, PC Factory)
 
 Estas tiendas bloquean al servidor, así que el precio llega desde tu navegador cuando abres la ficha.
 La extensión solo lee fichas de producto de esas tiendas, no hace requests propias a ellas y solo guarda

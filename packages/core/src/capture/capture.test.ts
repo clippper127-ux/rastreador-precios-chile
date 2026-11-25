@@ -145,3 +145,43 @@ describe("links de tiendas de la extensión", () => {
     expect(parseListingUrl("https://www.paris.cl/electro/audio/")).toMatchObject({ ok: false, reason: "not_product" });
   });
 });
+
+describe("tiendas de la plataforma Falabella y PC Factory (Fase 6)", () => {
+  it("Sodimac: __NEXT_DATA__ real con internetPrice + normal", () => {
+    const nd = {
+      props: {
+        pageProps: {
+          productData: {
+            id: "156723000",
+            name: "Kit de Taladro Percutor 20V + Set de Accesorios",
+            brandName: "DEWALT",
+            variants: [
+              {
+                id: "156723001",
+                isPurchaseable: true,
+                prices: [
+                  { type: "internetPrice", price: ["134.990"], crossed: false },
+                  { type: "normalPrice", price: ["199.990"], crossed: true },
+                ],
+                offerings: [{ sellerName: "SODIMAC" }],
+              },
+            ],
+          },
+        },
+      },
+    };
+    const p = falabellaFromNextData(nd, "https://www.sodimac.cl/sodimac-cl/articulo/156723000/taladro/156723001", store("sodimac"))!;
+    expect(p).toMatchObject({ brand: "DEWALT", priceNormal: 199990, priceOffer: 134990, sellerType: "store" });
+  });
+
+  it("links de Sodimac, Tottus y PC Factory", () => {
+    expect(parseListingUrl("https://www.sodimac.cl/sodimac-cl/articulo/156723000/taladro/156723001?exp=so_com")).toMatchObject({
+      ok: true,
+      storeId: "sodimac",
+      url: "https://sodimac.cl/sodimac-cl/articulo/156723000/taladro/156723001",
+    });
+    expect(parseListingUrl("https://www.tottus.cl/tottus-cl/articulo/123456/arroz/123457")).toMatchObject({ ok: true, storeId: "tottus" });
+    expect(parseListingUrl("https://www.pcfactory.cl/producto/55577-monitor")).toMatchObject({ ok: true, storeId: "pcfactory", mode: "extension" });
+    expect(parseListingUrl("https://www.sodimac.cl/sodimac-cl/lista/cat14080023/Taladros")).toMatchObject({ ok: false, reason: "not_product" });
+  });
+});

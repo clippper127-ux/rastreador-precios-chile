@@ -1,6 +1,7 @@
 import type { StoreAdapter } from "../adapter";
 import { EXTENSION_STORES } from "../capture";
 import { normalizeListingUrl } from "../url";
+import { jumbo, santaisabel } from "./cencosud";
 import { abcdin, hites, lapolar } from "./sfcc";
 
 /**
@@ -8,7 +9,7 @@ import { abcdin, hites, lapolar } from "./sfcc";
  * + su fila en packages/db/src/seed.ts + fixtures y tests.
  * Los adaptadores no hacen requests por su cuenta: reciben `fetch` del worker (rate limit, robots, UA).
  */
-export const adapters: StoreAdapter[] = [hites, lapolar, abcdin];
+export const adapters: StoreAdapter[] = [hites, lapolar, abcdin, jumbo, santaisabel];
 
 export function adapterById(id: string): StoreAdapter | undefined {
   return adapters.find((a) => a.id === id);
@@ -61,3 +62,4 @@ export function parseListingUrl(input: string): ParsedListingUrl {
 }
 
 export { createSfccAdapter, parseSfccProduct } from "./sfcc";
+export { createCencosudAdapter, parseCencosudProduct } from "./cencosud";

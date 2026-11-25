@@ -21,17 +21,17 @@ export function capturePage(store: ExtensionStore): CapturedProduct | null {
 
   // Falabella: __NEXT_DATA__ es exacto, pero solo vale si corresponde a ESTA ficha
   // (en navegación interna de Next.js queda el de la primera página).
-  if (store.id === "falabella") {
+  if (store.platform === "falabella") {
     let nd: unknown;
     try {
       nd = JSON.parse(document.getElementById("__NEXT_DATA__")?.textContent ?? "null");
     } catch {
       nd = null;
     }
-    const productId = location.pathname.match(/\/product\/(\d+)/)?.[1];
+    const productId = location.pathname.match(/\/(?:product|articulo)\/(\d+)/)?.[1];
     const pdId = (nd as { props?: { pageProps?: { productData?: { id?: string } } } })?.props?.pageProps?.productData?.id;
     if (nd && productId && pdId === productId) {
-      const p = falabellaFromNextData(nd, url);
+      const p = falabellaFromNextData(nd, url, store);
       if (p && (p.priceNormal ?? p.priceOffer) != null) return p;
     }
   }

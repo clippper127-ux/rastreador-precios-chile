@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Rastreador de precios",
-  "description": "Sigue y actualiza precios de Falabella, Paris, Ripley y Lider mientras navegas. Solo lee fichas de producto.",
+  "description": "Sigue y actualiza precios de Falabella, Sodimac, Tottus, Paris, Ripley, Lider y PC Factory mientras navegas. Solo lee fichas y búsquedas de esas tiendas.",
   "version": "0.1.0",
   "icons": {
     "16": "icon-16.png",
@@ -31,7 +31,10 @@
         "https://www.falabella.com/falabella-cl/*",
         "https://www.paris.cl/*",
         "https://simple.ripley.cl/*",
-        "https://www.lider.cl/*"
+        "https://www.lider.cl/*",
+        "https://www.sodimac.cl/sodimac-cl/*",
+        "https://www.tottus.cl/tottus-cl/*",
+        "https://www.pcfactory.cl/*"
       ],
       "js": [
         "content.js"

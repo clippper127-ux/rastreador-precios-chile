@@ -17,7 +17,8 @@
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
     "verify": "tsx src/verify.ts",
-    "studio": "drizzle-kit studio"
+    "studio": "drizzle-kit studio",
+    "admin": "tsx src/make-admin.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",

@@ -17,6 +17,8 @@ export interface ExtensionStore {
   cardName: string;
   /** Nombres de vendedor que significan "vendido por la tienda". */
   ownSellers: RegExp;
+  /** "falabella": misma plataforma que Falabella (Sodimac, Tottus) → __NEXT_DATA__ con productData/results. */
+  platform?: "falabella";
 }
 
 export const EXTENSION_STORES: ExtensionStore[] = [
@@ -27,6 +29,33 @@ export const EXTENSION_STORES: ExtensionStore[] = [
     productPath: /^\/falabella-cl\/product\/\d+/,
     cardName: "CMR",
     ownSellers: /^(falabella|sodimac|tottus)/i,
+    platform: "falabella",
+  },
+  {
+    id: "sodimac",
+    name: "Sodimac",
+    domain: "sodimac.cl",
+    productPath: /^\/sodimac-cl\/(articulo|product)\/\d+/,
+    cardName: "CMR",
+    ownSellers: /^(sodimac|falabella|homecenter)/i,
+    platform: "falabella",
+  },
+  {
+    id: "tottus",
+    name: "Tottus",
+    domain: "tottus.cl",
+    productPath: /^\/tottus-cl\/(articulo|product)\/\d+/,
+    cardName: "CMR",
+    ownSellers: /^(tottus|falabella)/i,
+    platform: "falabella",
+  },
+  {
+    id: "pcfactory",
+    name: "PC Factory",
+    domain: "pcfactory.cl",
+    productPath: /^\/producto\/\d+/,
+    cardName: "precio efectivo/transferencia",
+    ownSellers: /^pc ?factory/i,
   },
   {
     id: "paris",
@@ -151,8 +180,8 @@ function falabellaPrices(prices: FalabellaPrice[] | undefined) {
   return { priceNormal: priceNormal ?? priceOffer, priceOffer: priceNormal != null ? priceOffer : undefined, priceCard };
 }
 
-/** Lee la ficha de Falabella desde su __NEXT_DATA__. Elige la variante del skuId de la URL. */
-export function falabellaFromNextData(nextData: unknown, url: string): CapturedProduct | null {
+/** Lee la ficha (plataforma Falabella: Falabella, Sodimac, Tottus) desde __NEXT_DATA__. Elige la variante del skuId de la URL. */
+export function falabellaFromNextData(nextData: unknown, url: string, store: ExtensionStore = EXTENSION_STORES[0]!): CapturedProduct | null {
   const pd = (nextData as { props?: { pageProps?: { productData?: Record<string, unknown> } } })?.props?.pageProps
     ?.productData as
     | {
@@ -178,7 +207,6 @@ export function falabellaFromNextData(nextData: unknown, url: string): CapturedP
     pd.variants.find((v) => v.id === pd.primaryVariantId) ??
     pd.variants[0]!;
   const seller = variant.offerings?.[0]?.sellerName?.trim();
-  const store = EXTENSION_STORES[0]!;
 
   return {
     url,
@@ -194,16 +222,18 @@ export function falabellaFromNextData(nextData: unknown, url: string): CapturedP
   };
 }
 
-/** Item de resultados de búsqueda de Falabella (mismo formato de precios). Para la Fase 5. */
-export function falabellaFromSearchItem(item: {
-  url: string;
-  displayName: string;
-  brand?: string;
-  skuId?: string;
-  sellerName?: string;
-  prices?: FalabellaPrice[];
-}): CapturedProduct {
-  const store = EXTENSION_STORES[0]!;
+/** Item de resultados de búsqueda (plataforma Falabella: mismo formato de precios). */
+export function falabellaFromSearchItem(
+  item: {
+    url: string;
+    displayName: string;
+    brand?: string;
+    skuId?: string;
+    sellerName?: string;
+    prices?: FalabellaPrice[];
+  },
+  store: ExtensionStore = EXTENSION_STORES[0]!,
+): CapturedProduct {
   return {
     url: item.url,
     title: item.displayName,

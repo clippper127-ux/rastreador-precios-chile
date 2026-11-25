@@ -195,6 +195,18 @@ Detalle en [sondeo-tiendas.md](sondeo-tiendas.md). Se hizo desde una IP residenc
 
 **Cambio respecto al spec:** el spec ponía **Paris** como tienda de servidor para la Fase 1. Paris bloquea al worker con 403 incluso en `robots.txt`. Otra herramienta con el mismo User-Agent sí recibió 200, lo que indica un filtro por huella técnica del cliente. Cambiar de cliente para pasar ese filtro sería eludir su protección, así que Paris pasa a la extensión. En su lugar, la Fase 1 cubre **Hites, La Polar y Abcdin** con un adaptador compartido.
 
+## 6c. Tiendas al cierre de la Fase 6 (2026-11-24)
+
+| Estrategia | Tiendas | Detalle |
+|---|---|---|
+| **Servidor** | Hites, La Polar, Abcdin | SFCC (`adapters/sfcc.ts`). Búsqueda en servidor solo en Hites (robots). |
+| **Servidor** | Jumbo, Santa Isabel | `adapters/cencosud.ts`: JSON-LD con **EAN**, tachado y precio por unidad; búsqueda por ItemList. |
+| **Extensión** | Falabella, Sodimac, Tottus | Misma plataforma: `__NEXT_DATA__` con `cmrPrice` / `internetPrice`/`eventPrice` / `normalPrice`. Tottus sin verificar en vivo. |
+| **Extensión** | Paris, Ripley, Lider | Lector genérico (precio tachado / etiqueta / logo de tarjeta). Lider sin verificar (anti-bot). |
+| **Extensión** | PC Factory | Precios solo desde una API interna no documentada (no se usa); la extensión lee la página ya cargada. |
+| **Pendiente** | Mercado Libre | API oficial: requiere registrar una app (tus credenciales). |
+| **Desactivada** | SP Digital | 503 incluso en el navegador; sin verificar. |
+
 ## 7. Decisiones que necesito de ti
 
 1. ¿Apruebas la arquitectura y el modelo de datos?

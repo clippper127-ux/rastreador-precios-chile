@@ -60,8 +60,8 @@ const seed: Store[] = [
     searchUrlTemplate: "https://www.jumbo.cl/busqueda?ft={query}",
     minCheckIntervalMin: 720,
     maxRequestsPerMin: 6,
-    enabled: false,
-    notes: "VTEX. Búsqueda (ItemList) y ficha (Product) con JSON-LD. API de catálogo: 404. Adaptador en Fase 6.",
+    enabled: true,
+    notes: "Sitio sobre VTEX. Ficha: JSON-LD Product (EAN) + tachado y precio por unidad. Búsqueda: ItemList. (Fase 6)",
   },
   {
     id: "santaisabel",
@@ -72,20 +72,20 @@ const seed: Store[] = [
     searchUrlTemplate: "https://www.santaisabel.cl/busqueda?ft={query}",
     minCheckIntervalMin: 720,
     maxRequestsPerMin: 6,
-    enabled: false,
-    notes: "VTEX, crawl-delay 1 s. JSON-LD en búsqueda y ficha. robots prohíbe la API de catálogo. Fase 6.",
+    enabled: true,
+    notes: "Mismo adaptador que Jumbo. crawl-delay 1 s; robots prohíbe la API de catálogo (no se usa). (Fase 6)",
   },
   {
     id: "pcfactory",
     name: "PC Factory",
     domain: "pcfactory.cl",
-    sourceChain: ["server", "extension", "manual"],
+    sourceChain: ["extension", "manual"],
     searchMode: "link",
     searchUrlTemplate: "https://www.pcfactory.cl/buscar?valor={query}",
     minCheckIntervalMin: 360,
     maxRequestsPerMin: 6,
-    enabled: false,
-    notes: "robots.txt prohíbe /buscar y /busqueda; fichas /producto/ permitidas. Falta sondear la ficha. Fase 6.",
+    enabled: true,
+    notes: "Fichas renderizadas en el navegador (precios desde una API interna no documentada, que no usamos): extensión. robots.txt prohíbe /buscar.",
   },
 
   // ── API oficial ────────────────────────────────────────────────────────────
@@ -110,8 +110,8 @@ const seed: Store[] = [
       ["ripley", "Ripley", "ripley.cl", "https://simple.ripley.cl/search/{query}", "403 en robots.txt y búsqueda."],
       ["lider", "Lider", "lider.cl", "https://www.lider.cl/search?q={query}", "Página de desafío anti-bot."],
       ["tottus", "Tottus", "tottus.cl", "https://www.tottus.cl/tottus-cl/buscar?Ntt={query}", "403 en búsqueda."],
-      ["sodimac", "Sodimac", "sodimac.cl", "https://www.sodimac.cl/sodimac-cl/search?Ntt={query}", "Búsqueda 200 con __NEXT_DATA__ sin productos visibles; falta sondear ficha."],
-      ["spdigital", "SP Digital", "spdigital.cl", "https://www.spdigital.cl/search?q={query}", "robots.txt 503, búsqueda 403."],
+      ["sodimac", "Sodimac", "sodimac.cl", "https://www.sodimac.cl/sodimac-cl/search?Ntt={query}", "Plataforma Falabella (__NEXT_DATA__ con cmrPrice/internetPrice/normalPrice): extensión."],
+      ["spdigital", "SP Digital", "spdigital.cl", "https://www.spdigital.cl/search?q={query}", "503 incluso en el navegador (2026-11-24): sin verificar, desactivada."],
     ] as const
   ).map(
     ([id, name, domain, searchUrlTemplate, notes]): Store => ({
@@ -125,7 +125,7 @@ const seed: Store[] = [
       minCheckIntervalMin: 1440,
       maxRequestsPerMin: 2,
       // Activas vía extensión (Fase 3): Falabella, Paris, Ripley, Lider.
-      enabled: ["falabella", "paris", "ripley", "lider"].includes(id),
+      enabled: ["falabella", "paris", "ripley", "lider", "sodimac", "tottus"].includes(id),
       notes,
     }),
   ),

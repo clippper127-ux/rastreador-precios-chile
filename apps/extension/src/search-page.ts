@@ -42,13 +42,13 @@ export function isSearchPage(store: ExtensionStore): boolean {
 
 const firstHref = location.href;
 
-function falabellaResults(): CapturedProduct[] {
+function falabellaResults(store: ExtensionStore): CapturedProduct[] {
   // __NEXT_DATA__ solo es válido si no hubo navegación interna desde la carga.
   if (location.href !== firstHref) return [];
   try {
     const nd = JSON.parse(document.getElementById("__NEXT_DATA__")?.textContent ?? "null");
     const results = nd?.props?.pageProps?.results;
-    return Array.isArray(results) ? results.filter((r) => r?.url && r?.displayName).map(falabellaFromSearchItem) : [];
+    return Array.isArray(results) ? results.filter((r) => r?.url && r?.displayName).map((r: Parameters<typeof falabellaFromSearchItem>[0]) => falabellaFromSearchItem(r, store)) : [];
   } catch {
     return [];
   }
@@ -115,8 +115,8 @@ function genericResults(store: ExtensionStore): CapturedProduct[] {
 }
 
 export function captureSearchResults(store: ExtensionStore): CapturedProduct[] {
-  if (store.id === "falabella") {
-    const fromData = falabellaResults();
+  if (store.platform === "falabella") {
+    const fromData = falabellaResults(store);
     if (fromData.length) return fromData;
   }
   return genericResults(store);

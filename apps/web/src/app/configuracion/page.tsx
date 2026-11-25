@@ -1,6 +1,7 @@
 import { schema } from "@rastreador/db";
 import { eq } from "drizzle-orm";
-import { LogOut, Mail, MapPin } from "lucide-react";
+import { Activity, ChevronRight, LogOut, Mail, MapPin } from "lucide-react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { ExtensionTokenCard } from "@/components/extension-token-card";
@@ -47,6 +48,19 @@ export default async function ConfiguracionPage() {
             </form>
           </CardContent>
         </Card>
+        <Link
+          href="/estado"
+          className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-soft transition-shadow hover:shadow-lift sm:p-6"
+        >
+          <div className="grid size-10 place-items-center rounded-xl bg-accent text-accent-foreground">
+            <Activity aria-hidden className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold tracking-tight">Estado del sistema</p>
+            <p className="text-sm text-muted-foreground">Tiendas, worker, avisos y uso de los planes gratis.</p>
+          </div>
+          <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
+        </Link>
         <Card>
           <CardHeader>
             <CardTitle>Comuna</CardTitle>
