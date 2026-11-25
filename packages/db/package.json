@@ -10,7 +10,8 @@
     "./alerts": "./src/alerts.ts",
     "./telegram": "./src/telegram.ts",
     "./radar": "./src/radar.ts",
-    "./collections": "./src/collections.ts"
+    "./collections": "./src/collections.ts",
+    "./solotodo": "./src/solotodo.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

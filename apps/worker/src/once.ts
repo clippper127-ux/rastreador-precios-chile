@@ -2,6 +2,7 @@ import { createDb, schema } from "@rastreador/db";
 import { deliverPendingAlerts, httpTransport } from "@rastreador/db/alerts";
 import { checkCollectionBudgets } from "@rastreador/db/collections";
 import { notifyDealMatches, pollPublicChannels } from "@rastreador/db/radar";
+import { soloTodoPass } from "@rastreador/db/solotodo";
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { eq, sql } from "drizzle-orm";
 import { env } from "./env";
@@ -16,6 +17,17 @@ async function main() {
 
   try {
     const summary = await runPass(db);
+
+    // Tiendas que bloquean al servidor (Falabella, Paris, Ripley, Lider…): precio vía la API pública de SoloTodo.
+    let solotodo = { refreshed: 0, changed: 0, resolved: 0, errors: 0 };
+    try {
+      solotodo = await soloTodoPass(db, {
+        fetch: (u, init) =>
+          fetch(u, { ...init, headers: { "user-agent": env.userAgent, ...(init?.headers as Record<string, string>) }, signal: AbortSignal.timeout(15_000) }),
+      });
+    } catch (err) {
+      console.warn("SoloTodo no disponible:", (err as Error).message);
+    }
 
     // Mensajes nuevos al bot (vinculaciones, links reenviados) y alertas pendientes.
     let bot = { processed: 0, linked: 0, tracked: 0 };
@@ -50,7 +62,7 @@ async function main() {
         listingsChecked: summary.checked,
         snapshotsInserted: summary.snapshots,
         errors: summary.errors,
-        summary: { ...summary, bot, delivery, radar, listsNotified },
+        summary: { ...summary, solotodo, bot, delivery, radar, listsNotified },
       })
       .where(eq(schema.fetchRuns.id, run!.id));
 
@@ -60,6 +72,7 @@ async function main() {
         `${summary.snapshots} cambios, ${summary.errors} errores` +
         (summary.blockedStores.length ? `, bloqueadas: ${summary.blockedStores.join(", ")}` : ""),
     );
+    console.log(`  solotodo: ${solotodo.refreshed} actualizados, ${solotodo.resolved} enlazados, ${solotodo.changed} cambios, ${solotodo.errors} errores`);
     console.log(`  alertas: ${delivery.sent} enviadas, ${delivery.failed} fallidas · bot: ${bot.processed} mensajes · radar: ${radar.channels} canales, ${radar.newPosts} mensajes nuevos, ${radar.notified} avisos`);
     for (const [store, s] of Object.entries(summary.byStore)) console.log(`  ${store}: ${s.ok} ok, ${s.errors} errores`);
     await ping(summary.errors > 0 && summary.checked === 0 ? "fail" : "success", JSON.stringify(summary));

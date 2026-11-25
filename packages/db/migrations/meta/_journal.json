@@ -50,6 +50,13 @@
       "when": 1795571397730,
       "tag": "0006_fase7",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795623723461,
+      "tag": "0007_solotodo",
+      "breakpoints": true
     }
   ]
 }

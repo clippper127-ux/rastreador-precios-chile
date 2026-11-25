@@ -88,6 +88,21 @@ Prueba de la API: `pnpm --filter @rastreador/db exec tsx src/smoke-search.ts`.
 > **Antivirus con inspección HTTPS (Avast, etc.):** el servidor de desarrollo arranca con `--use-system-ca`
 > para confiar en los certificados de Windows. Sin eso, las búsquedas fallan con "unable to verify the first certificate".
 
+## SoloTodo (precios de tiendas que bloquean)
+
+La búsqueda y el worker usan la **API pública de SoloTodo** (`publicapi.solotodo.com`, sin clave) para traer precios
+de **Falabella, Paris, Ripley, Lider, PC Factory, Sodimac y Tottus** sin la extensión:
+- en **/buscar**, sus resultados se suman a la comparación (marcados "vía SoloTodo") y se agrupan por su producto,
+  sin mezclar versiones;
+- al seguirlos, el worker actualiza su precio cada ~3 h (máx. 60 por pasada, con pausa entre requests);
+- si pegaste un link de esas tiendas, el worker intenta encontrarlo en SoloTodo una vez por semana.
+
+El precio "oferta" de SoloTodo es con el medio de pago preferente de la tienda (Tarjeta CMR, Ripley, Cencosud…),
+por eso se guarda como precio con tarjeta. Uso moderado (caché de 30 min, 10 búsquedas/min).
+No pude leer sus términos de uso (la página requiere JavaScript): si SoloTodo pide dejar de usarla, se desactiva
+quitando la llamada en `apps/web/src/lib/search.ts` y `apps/worker/src/once.ts`.
+Prueba: `pnpm --filter @rastreador/db exec tsx --use-system-ca src/smoke-solotodo.ts`.
+
 ## Alertas (Telegram y correo)
 
 Se avisa cuando un producto que sigues baja de tu precio objetivo, baja más de X %, llega a su mínimo

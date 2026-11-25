@@ -49,4 +49,8 @@ export interface SearchResult extends PriceFields {
   stockStatus: StockStatus;
   seller?: string;
   sellerType?: SellerType;
+  /** Si el precio vino de SoloTodo: id de la publicación allá (para actualizarlo después). */
+  solotodoEntityId?: number;
+  /** Producto de SoloTodo: publicaciones con el mismo id son el mismo producto (y distinto id = distinta versión). */
+  solotodoProductId?: number;
 }

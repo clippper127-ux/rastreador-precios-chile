@@ -1,6 +1,7 @@
 import "server-only";
 import {
   adapters,
+  solotodoSearch,
   isAllowed,
   parseQuery,
   parseRobots,
@@ -82,6 +83,29 @@ export async function searchServerStores(q: ParsedQuery): Promise<StoreSearchOut
       }
     }),
   );
+}
+
+/**
+ * SoloTodo (API pública): precios de Falabella, Paris, Ripley, Lider, PC Factory y otras que no podemos buscar
+ * desde el servidor. Caché de 30 min y máximo 10 búsquedas/min entre todos los usuarios.
+ */
+export async function searchSoloTodo(q: ParsedQuery): Promise<StoreSearchOutcome> {
+  const base = { storeId: "solotodo", storeName: "SoloTodo" };
+  const key = `solotodo|${queryKey(q)}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return { ...base, status: "cached", results: hit.results };
+  if (!(await takeRateLimit(db(), "search:solotodo", 10, 60))) return { ...base, status: "limited", results: [] };
+  try {
+    const results = await solotodoSearch(q.raw, {
+      fetch: (u, init) =>
+        fetch(u, { ...init, headers: { "user-agent": UA, ...(init?.headers as Record<string, string>) }, signal: AbortSignal.timeout(10_000) }),
+    });
+    cache.set(key, { at: Date.now(), results });
+    return { ...base, status: "ok", results };
+  } catch (err) {
+    console.warn("Búsqueda en SoloTodo falló:", (err as Error).message);
+    return { ...base, status: "error", results: [] };
+  }
 }
 
 /** Resultados que la extensión capturó para esta consulta en las últimas 2 horas (los más recientes por tienda). */

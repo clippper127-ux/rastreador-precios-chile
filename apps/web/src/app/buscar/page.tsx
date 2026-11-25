@@ -1,4 +1,4 @@
-import { EXTENSION_STORES, eanFromQuery, groupResults, variantChoices, type SearchResult } from "@rastreador/core";
+import { EXTENSION_STORES, eanFromQuery, groupResults, parseListingUrl, variantChoices, type SearchResult } from "@rastreador/core";
 import { schema } from "@rastreador/db";
 import { Barcode, SearchX } from "lucide-react";
 import type { Metadata } from "next";
@@ -11,7 +11,7 @@ import { ResultGroupCard } from "@/components/result-group-card";
 import { StoreSearchLinks, type StoreLink } from "@/components/store-search-links";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
-import { capturedResults, listingsByEan, nameFromOpenFoodFacts, parseQuery, searchServerStores } from "@/lib/search";
+import { capturedResults, listingsByEan, nameFromOpenFoodFacts, parseQuery, searchServerStores, searchSoloTodo } from "@/lib/search";
 import { getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Resultados" };
@@ -95,8 +95,15 @@ async function Results({
   captured: SearchResult[];
   names: Record<string, string>;
 }) {
-  const server = await searchServerStores(q);
-  const all = [...server.flatMap((s) => s.results), ...captured];
+  const [stores, solotodo] = await Promise.all([searchServerStores(q), searchSoloTodo(q)]);
+  const server = [...stores, solotodo];
+  // Misma ficha desde varias fuentes: manda la tienda directa, luego la extensión y al final SoloTodo.
+  const seen = new Set<string>();
+  const all = [...stores.flatMap((s) => s.results), ...captured, ...solotodo.results].filter((r) => {
+    const p = parseListingUrl(r.url);
+    const key = p.ok ? p.url : r.url;
+    return !seen.has(key) && !!seen.add(key);
+  });
   const groups = groupResults(all, q, { loose });
   // Cuántos productos parecidos (accesorios, juegos, otras palabras) quedaron fuera de la búsqueda exacta.
   const hidden = loose ? 0 : groupResults(all, q, { loose: true }).length - groups.length;

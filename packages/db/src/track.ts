@@ -104,8 +104,8 @@ export async function recordCapture(
   db: Database,
   listingId: string,
   cap: CapturedProduct,
-  source: Extract<PriceSource, "server" | "extension" | "manual">,
-  userId: string,
+  source: Extract<PriceSource, "server" | "extension" | "manual" | "feed">,
+  userId: string | null,
 ): Promise<{ changed: boolean; snapshotId?: number }> {
   const listing = await db.query.listings.findFirst({ where: eq(schema.listings.id, listingId) });
   if (!listing) return { changed: false };

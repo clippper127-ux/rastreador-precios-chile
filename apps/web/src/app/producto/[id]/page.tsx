@@ -35,7 +35,7 @@ const SOURCE: Record<string, string> = {
   extension: "Extensión",
   manual: "Manual",
   pricto: "Pricto",
-  feed: "Feed",
+  feed: "SoloTodo",
   ai: "IA",
 };
 

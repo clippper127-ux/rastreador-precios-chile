@@ -2,6 +2,7 @@
 
 import { EXTENSION_STORES, adapters, parseListingUrl, sanitizeCapture, type StockStatus } from "@rastreador/core";
 import { schema } from "@rastreador/db";
+import { linkSoloTodo } from "@rastreador/db/solotodo";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -133,6 +134,7 @@ export interface FollowItem {
   stockStatus?: string;
   seller?: string;
   sellerType?: string;
+  solotodoEntityId?: number;
 }
 
 /**
@@ -150,7 +152,9 @@ export async function followGroup(items: FollowItem[]): Promise<TrackResult> {
     const cap = sanitizeCapture({ ...it, url: parsed.url, stockStatus: it.stockStatus ?? "unknown" });
     const ids = await ensureTracked(d, user.id, parsed, cap ?? { title: it.title }, productId);
     productId ??= ids.productId;
-    if (cap) await recordCapture(d, ids.listingId, cap, parsed.mode === "server" ? "server" : "extension", user.id);
+    const viaSoloTodo = Number.isInteger(it.solotodoEntityId) && (it.solotodoEntityId ?? 0) > 0;
+    if (viaSoloTodo) await linkSoloTodo(d, [{ listingId: ids.listingId, entityId: it.solotodoEntityId! }]);
+    if (cap) await recordCapture(d, ids.listingId, cap, viaSoloTodo ? "feed" : parsed.mode === "server" ? "server" : "extension", user.id);
   }
   if (!productId) return { error: "No pudimos seguir esas publicaciones." };
   revalidatePath("/seguimientos");

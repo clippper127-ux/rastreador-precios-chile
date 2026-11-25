@@ -89,6 +89,9 @@ export function SearchHero({ aiEnabled = false }: { aiEnabled?: boolean }) {
             {pending ? <Loader2 aria-hidden className="animate-spin" /> : <ArrowRight aria-hidden />}
           </Button>
         </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          ¿Tienes el link de la ficha? Pégalo aquí y toca <span className="font-medium text-foreground">Seguir</span>.
+        </p>
         {error && (
           <p id="search-error" role="alert" className="mt-3 text-left text-sm text-danger">
             {error}

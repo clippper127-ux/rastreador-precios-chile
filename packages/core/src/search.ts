@@ -205,6 +205,7 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 /** ¿Son el mismo producto? EAN manda; si no, marca compatible + modelos iguales + títulos parecidos. */
 export function sameProduct(a: SearchResult, b: SearchResult): boolean {
   if (a.ean && b.ean) return a.ean === b.ean;
+  if (a.solotodoProductId && b.solotodoProductId) return a.solotodoProductId === b.solotodoProductId;
   const brandA = a.brand ? foldText(a.brand) : undefined;
   const brandB = b.brand ? foldText(b.brand) : undefined;
   if (brandA && brandB && brandA !== brandB && !brandA.includes(brandB) && !brandB.includes(brandA)) return false;
@@ -257,7 +258,13 @@ export function groupResults(results: SearchResult[], query?: ParsedQuery, opts:
     // Por defecto, solo coincidencias exactas (sin accesorios ni juegos); `loose` muestra también las parecidas.
     if (query && !ean && !opts.loose && !matchesQuery(query, r.title, r.brand)) continue;
     const item = { ...r, bestNoCard: bestPriceNoCard(r), bestWithCard: bestPriceWithCard(r) };
-    const g = groups.find((g) => !g.items.some((i) => i.storeId === r.storeId) && g.items.some((i) => sameProduct(i, r)));
+    const g = groups.find(
+      (g) =>
+        !g.items.some((i) => i.storeId === r.storeId) &&
+        g.items.some((i) => sameProduct(i, r)) &&
+        // Nunca juntar versiones distintas aunque se encadenen por otra tienda (825 GB ≠ 1 TB).
+        !g.items.some((i) => variantConflict(i.title, r.title)),
+    );
     if (g) {
       g.items.push(item);
       g.relevance = Math.max(g.relevance, rel);
@@ -306,6 +313,19 @@ export function isValidEan(code: string): boolean {
 }
 
 /** Si la consulta es solo un código de barras, lo devuelve. */
+/** ¿Los títulos declaran medidas distintas del mismo tipo? ("825 GB" vs "1 TB", "200 g" vs "350 g"). */
+export function variantConflict(a: string, b: string): boolean {
+  const va = variantOf(a);
+  const vb = variantOf(b);
+  const unit = (t: string) => t.replace(/^[\d_]+/, "");
+  for (const u of new Set(va.map(unit))) {
+    const xa = va.filter((t) => unit(t) === u);
+    const xb = vb.filter((t) => unit(t) === u);
+    if (xb.length && !xa.some((t) => xb.includes(t))) return true;
+  }
+  return false;
+}
+
 /**
  * Versiones distintas entre los resultados (para "Elige la versión"), solo si la consulta no trae ya una medida.
  * Devuelve [{ token, label, count }] ordenado de menor a mayor dentro de cada unidad.

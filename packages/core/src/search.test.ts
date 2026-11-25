@@ -193,3 +193,19 @@ describe("elige la versión", () => {
     expect(variantChoices(g, q)).toEqual([]);
   });
 });
+
+describe("no encadenar versiones distintas", () => {
+  it("825 GB y 1 TB quedan separados aunque una tercera tienda no diga capacidad", () => {
+    const base = { stockStatus: "in_stock" as const, brand: "Sony" };
+    const groups = groupResults(
+      [
+        { ...base, storeId: "hites", url: "https://h/1", title: "Consola PS5 Edición Digital 825 GB + Juego Astro Bot" },
+        { ...base, storeId: "falabella", url: "https://f/1", title: "Consola PS5 Digital + Juego Astro Bot", solotodoProductId: 7 },
+        { ...base, storeId: "ripley", url: "https://r/1", title: "Consola PlayStation 5 1TB + Astro Bot", solotodoProductId: 7 },
+      ],
+      parseQuery("consola ps5"),
+    );
+    const withHites = groups.find((g) => g.items.some((i) => i.storeId === "hites"))!;
+    expect(withHites.items.map((i) => i.storeId)).not.toContain("ripley");
+  });
+});

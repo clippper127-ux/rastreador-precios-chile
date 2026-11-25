@@ -192,6 +192,10 @@ export const listings = pgTable(
     /** Normalizada con `normalizeListingUrl`. */
     url: text("url").notNull(),
     externalId: text("external_id"),
+    /** Publicación equivalente en SoloTodo (precio vía su API pública). */
+    solotodoEntityId: bigint("solotodo_entity_id", { mode: "number" }),
+    /** Último intento de encontrarla en SoloTodo (para no buscar en cada pasada). */
+    solotodoCheckedAt: ts("solotodo_checked_at"),
     ean: text("ean"),
     title: text("title").notNull(),
     imageUrl: text("image_url"),
