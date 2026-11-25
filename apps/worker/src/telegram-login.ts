@@ -2,11 +2,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import "./env";
+import qrcode from "qrcode-terminal";
 import { readerClient } from "./telegram-reader";
 
 /*
  * Inicia sesión UNA vez con la cuenta de Telegram dedicada y guarda la sesión en .env (TG_SESSION).
- *   pnpm telegram:login
+ *   pnpm telegram:login            (escaneando un QR con la app de Telegram)
+ *   pnpm telegram:login --codigo   (con número y código)
  * Tú escribes el número, el código y la contraseña en esta terminal; no se muestran ni se guardan en otro lado.
  * Requiere TG_API_ID y TG_API_HASH en .env (de https://my.telegram.org → API development tools).
  */
@@ -46,14 +48,40 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  console.log("Inicia sesión con la cuenta DEDICADA (no la personal).\n");
   const client = readerClient({ apiId, apiHash });
-  await client.start({
-    phoneNumber: () => ask("Número de la cuenta dedicada (con +56): "),
-    phoneCode: () => ask("Código que te llegó por Telegram: "),
-    password: () => ask("Contraseña de verificación en dos pasos (Enter si no tiene): ", true),
-    onError: (err) => console.error("Telegram:", err.message),
-  });
+  const password = (hint?: string) => ask(`Contraseña de verificación en dos pasos${hint ? ` (pista: ${hint})` : ""} (Enter si no tiene): `, true);
+  if (process.argv.includes("--codigo")) {
+    console.log("Inicia sesión con la cuenta DEDICADA (no la personal).\n");
+    await client.start({
+      phoneNumber: async () => {
+        // Acepta "9XXXXXXXX", "569XXXXXXXX" o "+569XXXXXXXX" (celular chileno).
+        const raw = (await ask("Número de la cuenta dedicada (ej.: +56912345678): ")).replace(/[\s()-]/g, "");
+        return /^9\d{8}$/.test(raw) ? `+56${raw}` : /^56\d{9}$/.test(raw) ? `+${raw}` : raw;
+      },
+      phoneCode: () => ask("Código que te llegó por Telegram: "),
+      password,
+      onError: (err) => console.error("Telegram:", err.message),
+    });
+  } else {
+    // Por defecto: QR (como Telegram Desktop). No depende de que llegue un código.
+    await client.connect();
+    await client.signInUserWithQrCode(
+      { apiId, apiHash },
+      {
+        qrCode: async ({ token }) => {
+          console.clear();
+          console.log("Con la cuenta DEDICADA en tu celular: Telegram → Ajustes → Dispositivos → Vincular dispositivo de escritorio,");
+          console.log("y escanea este QR (se renueva cada ~30 s):\n");
+          qrcode.generate(`tg://login?token=${token.toString("base64url")}`, { small: true });
+        },
+        password,
+        onError: async (err) => {
+          console.error("Telegram:", err.message);
+          return false;
+        },
+      },
+    );
+  }
   const me = await client.getMe();
   saveSession(String(client.session.save()));
   await client.disconnect();
