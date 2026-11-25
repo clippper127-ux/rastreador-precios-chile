@@ -35,6 +35,8 @@ export interface PassSummary {
   errors: number;
   blockedStores: string[];
   byStore: Record<string, { ok: number; errors: number; lastError?: string }>;
+  /** Evento de descuento activo durante la pasada (revisión más frecuente). */
+  event?: string;
 }
 
 async function claimDueListings(db: Database): Promise<Listing[]> {
@@ -77,9 +79,13 @@ async function waitStoreTurn(db: Database, store: Store) {
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
 }
 
+/** Intervalo máximo durante un evento de descuento activo (CyberDay, Black Friday...), si hay uno. */
+let eventIntervalMin: number | undefined;
+
 function nextCheck(store: Store): Date {
+  const base = eventIntervalMin != null ? Math.min(store.minCheckIntervalMin, eventIntervalMin) : store.minCheckIntervalMin;
   // Pequeño desorden (±10%) para que no todo venza a la vez.
-  const minutes = store.minCheckIntervalMin * (0.9 + Math.random() * 0.2);
+  const minutes = base * (0.9 + Math.random() * 0.2);
   return new Date(Date.now() + minutes * 60_000);
 }
 
@@ -255,6 +261,12 @@ async function processStore(db: Database, store: Store, listings: Listing[], sum
 
 export async function runPass(db: Database): Promise<PassSummary> {
   const summary: PassSummary = { claimed: 0, checked: 0, snapshots: 0, errors: 0, blockedStores: [], byStore: {} };
+  const [ev] = await db.execute<{ name: string; check_interval_min: number }>(sql`
+    select name, check_interval_min from sale_events
+    where starts_on <= now() and now() < ends_on + interval '1 day'
+    order by check_interval_min limit 1`);
+  eventIntervalMin = ev?.check_interval_min;
+  if (ev) summary.event = ev.name;
   const listings = await claimDueListings(db);
   summary.claimed = listings.length;
   if (!listings.length) return summary;

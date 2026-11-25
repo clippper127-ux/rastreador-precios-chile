@@ -10,6 +10,7 @@ import {
 import { schema } from "@rastreador/db";
 import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "./db";
+import { computeInsights, saleEvents, toTimed, type Insights } from "./insights";
 
 /*
  * Lecturas de "lo mío". TODAS reciben el userId de la sesión y filtran por él.
@@ -56,6 +57,7 @@ export interface WatchCard {
   spark: SparkPoint[];
   pending: boolean;
   createdAt: Date;
+  insights: Insights;
 }
 
 function toView(l: typeof schema.listings.$inferSelect, stores: Map<string, typeof schema.stores.$inferSelect>): ListingView {
@@ -129,7 +131,10 @@ export async function listWatchCards(userId: string): Promise<WatchCard[]> {
     );
 
   const listingIds = links.map((l) => l.listing.id);
-  const since = new Date(Date.now() - 30 * 86_400_000);
+  // 90 días: el veredicto usa estadísticas de 90 días; el sparkline muestra los últimos 30.
+  const since = new Date(Date.now() - 90 * 86_400_000);
+  const sparkFrom = Date.now() - 30 * 86_400_000;
+  const events = await saleEvents();
   const snaps = listingIds.length
     ? await d
         .select()
@@ -145,7 +150,9 @@ export async function listWatchCards(userId: string): Promise<WatchCard[]> {
     const bestWithCard = minBy(listings, (l) => l.bestWithCard)?.bestWithCard;
 
     // Sparkline y variación del listing más barato.
-    const series = best ? snaps.filter((s) => s.listingId === best.id) : [];
+    const series = best ? snaps.filter((s) => s.listingId === best.id && s.observedAt.getTime() >= sparkFrom) : [];
+    const byListing = new Map(listings.map((l) => [l.id, snaps.filter((s) => s.listingId === l.id).map(toTimed)]));
+    const insights = computeInsights(listings, byListing, events);
     const spark: SparkPoint[] = series
       .map((s) => ({
         t: s.observedAt.getTime(),
@@ -171,6 +178,7 @@ export async function listWatchCards(userId: string): Promise<WatchCard[]> {
       spark,
       pending: listings.every((l) => l.pending),
       createdAt: watch.createdAt,
+      insights,
     };
   });
 }
@@ -209,6 +217,7 @@ export interface ProductDetail {
   bestNoCard?: number;
   bestWithCard?: number;
   best?: ListingView;
+  insights: Insights;
 }
 
 /** Detalle de un producto que sigo. Devuelve null si no es mío (404). */
@@ -267,6 +276,8 @@ export async function getProductDetail(userId: string, productId: string): Promi
   }
 
   const minPoint = minBy(history, (h) => (h.stock === "out_of_stock" ? undefined : h.noCard));
+  const byListing = new Map(listings.map((l) => [l.id, snaps.filter((s) => s.listingId === l.id).map(toTimed)]));
+  const insights = computeInsights(listings, byListing, await saleEvents());
   return {
     watchId: row.watch.id,
     productId: row.product.id,
@@ -293,6 +304,7 @@ export async function getProductDetail(userId: string, productId: string): Promi
     bestNoCard: best?.bestNoCard,
     bestWithCard: minBy(listings, (l) => l.bestWithCard)?.bestWithCard,
     best,
+    insights,
   };
 }
 

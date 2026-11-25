@@ -1,12 +1,15 @@
 import { EXTENSION_STORES, formatCLP, MIN_COVERAGE_DAYS_FOR_VERDICT } from "@rastreador/core";
-import { ArrowLeft, Clock, ExternalLink, Info, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, ExternalLink, Loader2, Trash2, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { unwatch } from "@/app/actions";
 import { AlertSettingsForm } from "@/components/alert-settings-form";
+import { AddToListForm } from "@/components/list-forms";
+import { getLists } from "@/lib/lists";
 import { ManualPriceForm } from "@/components/manual-price-form";
 import { PriceBlock } from "@/components/price-block";
+import { VerdictPanel } from "@/components/verdict";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +53,7 @@ export default async function ProductoPage({
   if (!p) notFound();
 
   const pending = p.listings.every((l) => l.pending);
+  const lists = await getLists(user.id);
   const enoughData = (p.stats?.coverageDays ?? 0) >= MIN_COVERAGE_DAYS_FOR_VERDICT;
 
   return (
@@ -101,7 +105,15 @@ export default async function ProductoPage({
                 Obteniendo el primer precio…
               </p>
             ) : p.best ? (
-              <PriceBlock size="lg" prices={toPrices(p.best)} />
+              <>
+                <PriceBlock size="lg" prices={toPrices(p.best)} />
+                {p.insights.fake[p.best.id] && (
+                  <p role="note" className="flex gap-2 rounded-xl bg-caution-soft p-3 text-sm text-caution">
+                    <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                    {p.insights.fake[p.best.id]!.message}
+                  </p>
+                )}
+              </>
             ) : (
               <Badge variant="danger">Sin stock en las tiendas que sigues</Badge>
             )}
@@ -115,12 +127,7 @@ export default async function ProductoPage({
                 <dd className="tabular font-medium">{enoughData && p.stats ? formatCLP(p.stats.median) : "Faltan datos"}</dd>
               </div>
             </dl>
-            {!enoughData && !pending && (
-              <p className="flex gap-2 text-xs text-muted-foreground">
-                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                Con {MIN_COVERAGE_DAYS_FOR_VERDICT} días de historial te diremos si es buen momento para comprar.
-              </p>
-            )}
+            {!pending && <VerdictPanel v={p.insights.verdict} />}
           </CardContent>
         </Card>
       </section>
@@ -153,7 +160,7 @@ export default async function ProductoPage({
         </CardHeader>
         <CardContent className="flex flex-col divide-y">
           {p.listings.map((l) => (
-            <StoreRow key={l.id} listing={l} />
+            <StoreRow key={l.id} listing={l} fake={p.insights.fake[l.id]?.message} />
           ))}
         </CardContent>
       </Card>
@@ -172,7 +179,8 @@ export default async function ProductoPage({
             <CardDescription>Se borra de tu lista. El historial se conserva si otra persona lo sigue.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={unwatch.bind(null, p.productId)}>
+            <AddToListForm productId={p.productId} lists={lists.map((l) => ({ id: l.id, name: l.name }))} />
+            <form action={unwatch.bind(null, p.productId)} className="mt-4">
               <Button type="submit" variant="outline" className="text-danger">
                 <Trash2 aria-hidden />
                 Dejar de seguir
@@ -194,7 +202,7 @@ function toPrices(l: ListingView) {
   };
 }
 
-function StoreRow({ listing: l }: { listing: ListingView }) {
+function StoreRow({ listing: l, fake }: { listing: ListingView; fake?: string }) {
   const stock = STOCK[l.stockStatus] ?? STOCK.unknown!;
   const stale = isStale(l.lastCheckedAt);
   const viaExtension = EXTENSION_STORES.some((s) => s.id === l.storeId);
@@ -213,6 +221,11 @@ function StoreRow({ listing: l }: { listing: ListingView }) {
           ) : (
             <>
               <Badge variant={stock.variant}>{stock.label}</Badge>
+              {fake && (
+                <Badge variant="caution" title={fake}>
+                  <TriangleAlert aria-hidden /> Descuento dudoso
+                </Badge>
+              )}
               <span className={stale ? "text-caution" : undefined}>
                 {stale ? "Último precio conocido " : "Actualizado "}
                 {timeAgo(l.lastCheckedAt)}

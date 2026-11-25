@@ -111,8 +111,10 @@ export interface ResultGroup {
  */
 export function groupResults(results: SearchResult[], query?: ParsedQuery): ResultGroup[] {
   const groups: ResultGroup[] = [];
+  // Búsqueda por código de barras: la tienda ya filtró por EAN; se descartan solo los que traen OTRO EAN.
+  const ean = query ? eanFromQuery(query) : undefined;
   for (const r of results) {
-    const rel = query ? relevance(query, `${r.brand ?? ""} ${r.title}`) : 1;
+    const rel = ean ? (r.ean && r.ean !== ean ? 0 : 1) : query ? relevance(query, `${r.brand ?? ""} ${r.title}`) : 1;
     if (query && rel < 0.5) continue;
     const item = { ...r, bestNoCard: bestPriceNoCard(r), bestWithCard: bestPriceWithCard(r) };
     const g = groups.find((g) => !g.items.some((i) => i.storeId === r.storeId) && g.items.some((i) => sameProduct(i, r)));
@@ -151,4 +153,19 @@ export function queryFromSearchUrl(url: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** ¿Es un código de barras EAN-8/UPC-A/EAN-13/GTIN-14 válido (dígito verificador incluido)? */
+export function isValidEan(code: string): boolean {
+  if (!/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(code)) return false;
+  const digits = code.split("").map(Number);
+  const check = digits.pop()!;
+  const sum = digits.reverse().reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10 === check;
+}
+
+/** Si la consulta es solo un código de barras, lo devuelve. */
+export function eanFromQuery(q: ParsedQuery): string | undefined {
+  const raw = q.raw.replace(/\s+/g, "");
+  return isValidEan(raw) ? raw : undefined;
 }

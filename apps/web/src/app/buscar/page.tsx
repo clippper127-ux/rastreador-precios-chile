@@ -1,6 +1,6 @@
-import { EXTENSION_STORES, groupResults, type SearchResult } from "@rastreador/core";
+import { EXTENSION_STORES, eanFromQuery, groupResults, type SearchResult } from "@rastreador/core";
 import { schema } from "@rastreador/db";
-import { SearchX } from "lucide-react";
+import { Barcode, SearchX } from "lucide-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -10,15 +10,27 @@ import { ResultGroupCard } from "@/components/result-group-card";
 import { StoreSearchLinks, type StoreLink } from "@/components/store-search-links";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
-import { capturedResults, parseQuery, searchServerStores } from "@/lib/search";
+import { capturedResults, listingsByEan, nameFromOpenFoodFacts, parseQuery, searchServerStores } from "@/lib/search";
 import { getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Resultados" };
 
-export default async function BuscarPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q: raw = "" } = await searchParams;
+export default async function BuscarPage({ searchParams }: { searchParams: Promise<{ q?: string; ean?: string }> }) {
+  const { q: raw = "", ean: fromEan } = await searchParams;
   const q = parseQuery(raw);
   if (!q.tokens.length) redirect("/");
+
+  // Búsqueda por código de barras (p. ej. desde una foto): las tiendas no buscan por EAN.
+  // 1) lo que ya conocemos con ese EAN; 2) nombre según Open Food Facts → buscar por nombre.
+  const ean = eanFromQuery(q);
+  let known: SearchResult[] = [];
+  if (ean) {
+    known = await listingsByEan(ean);
+    if (!known.length) {
+      const name = await nameFromOpenFoodFacts(ean);
+      if (name) redirect(`/buscar?q=${encodeURIComponent(name)}&ean=${ean}`);
+    }
+  }
 
   const user = await getUser();
   const stores = await db().select().from(schema.stores);
@@ -42,6 +54,18 @@ export default async function BuscarPage({ searchParams }: { searchParams: Promi
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={`“${q.raw}”`} description="Resultados agrupados por producto, de menor a mayor precio." />
+      {fromEan && /^\d{8,14}$/.test(fromEan) && (
+        <p role="status" className="flex items-center gap-2 rounded-xl bg-accent p-3 text-sm text-accent-foreground">
+          <Barcode aria-hidden className="size-4 shrink-0" />
+          El código {fromEan} corresponde a este producto según Open Food Facts.
+        </p>
+      )}
+      {ean && !known.length && (
+        <p role="status" className="flex items-center gap-2 rounded-xl bg-caution-soft p-3 text-sm text-caution">
+          <Barcode aria-hidden className="size-4 shrink-0" />
+          No encontramos el código {ean}: las tiendas no buscan por código de barras. Escribe el nombre del producto o, si está activo, usa la foto sin código para que la IA lo reconozca.
+        </p>
+      )}
 
       <section aria-labelledby="otras" className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
         <h2 id="otras" className="font-medium">Buscar también en</h2>
@@ -52,7 +76,7 @@ export default async function BuscarPage({ searchParams }: { searchParams: Promi
       </section>
 
       <Suspense fallback={<ResultsSkeleton />}>
-        <Results q={q} captured={captured.flatMap((c) => c.results)} names={names} />
+        <Results q={q} captured={[...known, ...captured.flatMap((c) => c.results)]} names={names} />
       </Suspense>
     </div>
   );

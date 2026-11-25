@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseSfccSearch } from "./adapters/sfcc";
-import { groupResults, parseQuery, relevance, sameProduct, tokenize } from "./search";
+import { groupResults, isValidEan, parseQuery, relevance, sameProduct, tokenize } from "./search";
 import type { SearchResult } from "./types";
 
 const r = (storeId: string, title: string, price: number, extra: Partial<SearchResult> = {}): SearchResult => ({
@@ -88,5 +88,25 @@ describe("listado de búsqueda de Hites (fixture real)", () => {
     const akai = groupResults(results, parseQuery("akai air zen")).filter((g) => /akai/i.test(g.title));
     expect(akai.length).toBeGreaterThanOrEqual(2);
     expect(akai.every((g) => g.items.length === 1)).toBe(true);
+  });
+});
+
+describe("búsqueda por código de barras", () => {
+  it("valida EAN con dígito verificador", () => {
+    expect(isValidEan("7809601118854")).toBe(true); // Jumbo, real
+    expect(isValidEan("7804652331504")).toBe(true); // Jumbo, real
+    expect(isValidEan("7809601118855")).toBe(false);
+    expect(isValidEan("12345")).toBe(false);
+  });
+  it("agrupa por EAN y descarta otros EAN", () => {
+    const groups = groupResults(
+      [
+        r("jumbo", "Audífono Headband Bluetooth Fiddler Negro", 8990, { ean: "7809601118854" }),
+        r("lider", "Audífonos Fiddler Headband", 9490),
+        r("jumbo", "Otro producto", 1000, { ean: "7804652331504" }),
+      ],
+      parseQuery("7809601118854"),
+    );
+    expect(groups.flatMap((g) => g.items.map((i) => i.storeId))).toEqual(["jumbo", "lider"]);
   });
 });

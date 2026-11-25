@@ -79,6 +79,7 @@ export async function getSystemStatus() {
     where status = 'failed' and created_at > now() - interval '7 days' group by 1 order by 2 desc limit 5`);
 
   const channels = await d.select().from(schema.dealChannels).orderBy(desc(schema.dealChannels.lastCheckedAt)).limit(30);
+  const events = await d.select().from(schema.saleEvents).orderBy(schema.saleEvents.startsOn);
 
   const dbMb = Number(usage?.db_bytes ?? 0) / 1024 / 1024;
   return {
@@ -98,6 +99,7 @@ export async function getSystemStatus() {
     alerts: Object.fromEntries(alerts.map((a) => [a.status, a.n])) as Record<string, number>,
     failedAlerts,
     channels,
+    events: events.filter((e) => e.endsOn.getTime() > Date.now() - 30 * 86_400_000),
     integrations: {
       telegram: !!process.env.TELEGRAM_BOT_TOKEN,
       email: !!process.env.RESEND_API_KEY,

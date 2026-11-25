@@ -9,7 +9,8 @@
     "./track": "./src/track.ts",
     "./alerts": "./src/alerts.ts",
     "./telegram": "./src/telegram.ts",
-    "./radar": "./src/radar.ts"
+    "./radar": "./src/radar.ts",
+    "./collections": "./src/collections.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

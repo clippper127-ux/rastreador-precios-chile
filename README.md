@@ -109,6 +109,28 @@ tiendas soportadas —también acortados o de afiliados— los sigue por ti y te
 
 Pruebas sin enviar nada real: `pnpm --filter @rastreador/db exec tsx src/smoke-alerts.ts`.
 
+## Buscar con una foto
+
+En el inicio, **Buscar con una foto** (en el celular abre la cámara):
+1. Si la foto muestra el **código de barras**, se lee **en tu dispositivo** (sin subir la foto) y se busca por EAN:
+   primero entre lo que ya sigue alguien en la app y, si no, en **Open Food Facts** (base abierta, fuerte en
+   supermercado) para obtener el nombre del producto.
+2. Si no hay código de barras y configuraste `LLM_API_KEY` (Gemini, plan gratis en aistudio.google.com),
+   la foto reducida se envía a Gemini para reconocer el producto. Máx. 10 fotos por hora.
+   El modelo se cambia con `LLM_MODEL`; los nombres y límites gratis cambian, confírmalos en AI Studio.
+
+## ¿Compro ahora o espero? · descuentos falsos · eventos · listas
+
+- **Veredicto** en cada producto (y en el dashboard): *Buen momento / Buen precio / Promedio / Algo caro /
+  Mejor espera / Faltan datos*, con sus razones. Reglas simples: mínimo histórico, percentiles de 90 días,
+  otra tienda más barata y cercanía a un evento (≤ 21 días). Requiere 14 días de historial.
+- **Descuento falso**: si el "antes" está ≥ 10 % sobre lo que realmente costó en 90 días, se avisa
+  ("este descuento no es real: el precio habitual era $X").
+- **Eventos** (CyberDay, Black Friday…): se editan en **/estado** (administradores). Durante un evento el
+  worker revisa cada 2 h. Las fechas iniciales son aproximadas: confírmalas cuando se anuncien.
+- **Listas** con presupuesto (**/listas**): agrega productos desde su detalle; te avisamos una vez cuando
+  la lista completa quede bajo el presupuesto. Prueba: `pnpm --filter @rastreador/db exec tsx src/smoke-lists.ts`.
+
 ## Radar de ofertas (Telegram)
 
 Lee canales y grupos de Telegram y te avisa (por el bot o correo) cuando aparece:

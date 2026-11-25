@@ -407,3 +407,47 @@ export const dealMatches = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.postId] }), index("deal_matches_user_idx").on(t.userId, t.createdAt.desc())],
 );
+
+// ─── Fase 7: eventos de descuento y listas ──────────────────────────────────
+
+/** Calendario de eventos (CyberDay, Black Friday...). Editable en /estado; sube la frecuencia de revisión. */
+export const saleEvents = pgTable("sale_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  startsOn: ts("starts_on").notNull(),
+  endsOn: ts("ends_on").notNull(),
+  /** Intervalo máximo de revisión durante el evento (min). */
+  checkIntervalMin: integer("check_interval_min").notNull().default(120),
+  /** Fechas aún no confirmadas por las tiendas. */
+  tentative: boolean("tentative").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+/** Listas / colecciones ("Navidad", "Setup escritorio") con presupuesto total. */
+export const collections = pgTable(
+  "collections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull(),
+    name: text("name").notNull(),
+    budget: integer("budget"),
+    /** Total que ya se avisó como "bajo el presupuesto" (para no repetir). */
+    notifiedTotal: integer("notified_total"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("collections_user_idx").on(t.userId)],
+);
+
+export const collectionItems = pgTable(
+  "collection_items",
+  {
+    collectionId: uuid("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    watchId: uuid("watch_id")
+      .notNull()
+      .references(() => watches.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.collectionId, t.watchId] })],
+);

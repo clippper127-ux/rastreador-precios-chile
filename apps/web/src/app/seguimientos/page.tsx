@@ -40,12 +40,17 @@ export default async function SeguimientosPage() {
         title="Mis seguimientos"
         description={`${cards.length} ${cards.length === 1 ? "producto" : "productos"}`}
         actions={
-          <Button asChild>
-            <Link href="/">
-              <Plus aria-hidden />
-              Seguir otro
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href="/listas">Mis listas</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/">
+                <Plus aria-hidden />
+                Seguir otro
+              </Link>
+            </Button>
+          </>
         }
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

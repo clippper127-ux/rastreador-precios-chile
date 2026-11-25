@@ -1,5 +1,6 @@
 import { BellRing, LineChart, ShieldCheck } from "lucide-react";
 import { SearchHero } from "@/components/search-hero";
+import { visionEnabled } from "@/lib/vision";
 
 const FEATURES = [
   {
@@ -22,7 +23,7 @@ const FEATURES = [
 export default function HomePage() {
   return (
     <>
-      <SearchHero />
+      <SearchHero aiEnabled={visionEnabled()} />
       <section aria-label="Qué hace" className="mx-auto mt-20 grid max-w-4xl gap-4 sm:mt-28 sm:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, text }) => (
           <div key={title} className="rounded-xl border bg-card p-5 shadow-soft">

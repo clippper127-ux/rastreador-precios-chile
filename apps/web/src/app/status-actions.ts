@@ -30,3 +30,39 @@ export async function resetStoreBackoff(storeId: string): Promise<void> {
     .where(eq(schema.stores.id, storeId));
   revalidatePath("/estado");
 }
+
+export type EventMsg = { ok: string } | { error: string } | undefined;
+
+/** Calendario de eventos de descuento: durante un evento el worker revisa más seguido. */
+export async function addSaleEvent(_prev: EventMsg, form: FormData): Promise<EventMsg> {
+  await requireAdmin();
+  const name = String(form.get("name") ?? "").trim().slice(0, 60);
+  const starts = new Date(String(form.get("startsOn") ?? ""));
+  const ends = new Date(String(form.get("endsOn") ?? ""));
+  const interval = Number.parseInt(String(form.get("interval") ?? "120"), 10);
+  if (name.length < 2 || Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) return { error: "Completa nombre y fechas." };
+  if (ends < starts) return { error: "La fecha de término es anterior al inicio." };
+  await db()
+    .insert(schema.saleEvents)
+    .values({
+      name,
+      startsOn: starts,
+      endsOn: ends,
+      checkIntervalMin: Number.isFinite(interval) ? Math.min(Math.max(interval, 60), 720) : 120,
+      tentative: form.get("tentative") === "on",
+    });
+  revalidatePath("/estado");
+  return { ok: "Evento agregado" };
+}
+
+export async function deleteSaleEvent(id: string): Promise<void> {
+  await requireAdmin();
+  await db().delete(schema.saleEvents).where(eq(schema.saleEvents.id, id));
+  revalidatePath("/estado");
+}
+
+export async function confirmSaleEvent(id: string): Promise<void> {
+  await requireAdmin();
+  await db().update(schema.saleEvents).set({ tentative: false }).where(eq(schema.saleEvents.id, id));
+  revalidatePath("/estado");
+}

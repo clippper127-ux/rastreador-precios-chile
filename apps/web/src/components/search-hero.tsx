@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { trackUrl } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { PhotoSearchButton } from "./photo-search";
 
 const EXAMPLES = [
   "PS5 Slim con lector",
@@ -14,7 +15,7 @@ const EXAMPLES = [
   "Monitor 27\" 144 Hz",
 ];
 
-export function SearchHero() {
+export function SearchHero({ aiEnabled = false }: { aiEnabled?: boolean }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const reduce = useReducedMotion();
@@ -111,6 +112,10 @@ export function SearchHero() {
           </li>
         ))}
       </ul>
+
+      <div className="mt-6">
+        <PhotoSearchButton aiEnabled={aiEnabled} />
+      </div>
     </motion.section>
   );
 }

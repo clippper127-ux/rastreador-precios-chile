@@ -6,6 +6,7 @@ import { isStale, timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { WatchCard as WatchCardData } from "@/lib/watches";
 import { Sparkline } from "./sparkline";
+import { VerdictBadge } from "./verdict";
 
 export function WatchCard({ card }: { card: WatchCardData }) {
   const trend = card.changePct == null ? "flat" : card.changePct < 0 ? "down" : "up";
@@ -67,6 +68,13 @@ export function WatchCard({ card }: { card: WatchCardData }) {
       <div className="mt-3">
         <Sparkline data={card.spark} trend={trend} />
       </div>
+
+      {!card.pending && (card.insights.verdict.verdict !== "faltan_datos" || Object.keys(card.insights.fake).length > 0) && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <VerdictBadge v={card.insights.verdict} />
+          {Object.keys(card.insights.fake).length > 0 && <Badge variant="caution">Descuento dudoso</Badge>}
+        </div>
+      )}
 
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="flex min-w-0 items-center gap-1.5">

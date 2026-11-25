@@ -10,3 +10,4 @@ export * from "./capture";
 export * from "./alerts";
 export * from "./search";
 export * from "./radar";
+export * from "./insights";

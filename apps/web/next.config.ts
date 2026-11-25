@@ -6,6 +6,8 @@ config({ path: "../../.env", quiet: true });
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@rastreador/core", "@rastreador/db"],
+  // Búsqueda por foto: la imagen ya viene reducida (~1280 px), pero se deja margen.
+  experimental: { serverActions: { bodySizeLimit: "2mb" } },
   images: {
     // Imágenes de producto de las tiendas. Se amplía al agregar adaptadores.
     remotePatterns: [

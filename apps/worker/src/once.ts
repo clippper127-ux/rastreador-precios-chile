@@ -1,5 +1,6 @@
 import { createDb, schema } from "@rastreador/db";
 import { deliverPendingAlerts, httpTransport } from "@rastreador/db/alerts";
+import { checkCollectionBudgets } from "@rastreador/db/collections";
 import { notifyDealMatches, pollPublicChannels } from "@rastreador/db/radar";
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { eq, sql } from "drizzle-orm";
@@ -41,6 +42,7 @@ async function main() {
     } catch (err) {
       console.warn("Radar no disponible:", (err as Error).message);
     }
+    const listsNotified = await checkCollectionBudgets(db, env.appUrl, httpTransport(deliveryCfg));
     await db
       .update(schema.fetchRuns)
       .set({
@@ -48,7 +50,7 @@ async function main() {
         listingsChecked: summary.checked,
         snapshotsInserted: summary.snapshots,
         errors: summary.errors,
-        summary: { ...summary, bot, delivery, radar },
+        summary: { ...summary, bot, delivery, radar, listsNotified },
       })
       .where(eq(schema.fetchRuns.id, run!.id));
 

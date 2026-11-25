@@ -43,6 +43,13 @@
       "when": 1795570294975,
       "tag": "0005_radar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795571397730,
+      "tag": "0006_fase7",
+      "breakpoints": true
     }
   ]
 }

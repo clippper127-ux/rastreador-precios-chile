@@ -1,8 +1,9 @@
 import { schema } from "@rastreador/db";
 import { eq } from "drizzle-orm";
-import { Activity, CheckCircle2, CircleSlash, Database, Gauge, Radio, ShieldAlert, Timer, TriangleAlert } from "lucide-react";
+import { Activity, CalendarDays, CheckCircle2, CircleSlash, Database, Gauge, Radio, ShieldAlert, Timer, Trash2, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
-import { resetStoreBackoff, setStorePaused } from "@/app/status-actions";
+import { confirmSaleEvent, deleteSaleEvent, resetStoreBackoff, setStorePaused } from "@/app/status-actions";
+import { AddEventForm } from "@/components/events-admin";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -207,6 +208,47 @@ export default async function EstadoPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarDays aria-hidden className="size-5" /> Eventos de descuento
+          </CardTitle>
+          <CardDescription>
+            Durante un evento el worker revisa más seguido, y el veredicto sugiere esperar si falta poco. Las fechas iniciales son aproximadas: confírmalas cuando las tiendas las anuncien.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <ul className="flex flex-col divide-y text-sm">
+            {s.events.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span>
+                  <span className="font-medium">{e.name}</span>{" "}
+                  <span className="text-muted-foreground">
+                    {e.startsOn.toLocaleDateString("es-CL", { timeZone: "UTC" })} – {e.endsOn.toLocaleDateString("es-CL", { timeZone: "UTC" })} · cada {e.checkIntervalMin} min
+                  </span>{" "}
+                  {e.tentative && <Badge variant="caution">Por confirmar</Badge>}
+                </span>
+                {isAdmin && (
+                  <span className="flex gap-1">
+                    {e.tentative && (
+                      <form action={confirmSaleEvent.bind(null, e.id)}>
+                        <Button size="sm" variant="ghost" type="submit">Confirmar</Button>
+                      </form>
+                    )}
+                    <form action={deleteSaleEvent.bind(null, e.id)}>
+                      <Button size="icon-sm" variant="ghost" type="submit" aria-label={`Borrar ${e.name}`}>
+                        <Trash2 aria-hidden className="size-4" />
+                      </Button>
+                    </form>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {isAdmin && <AddEventForm />}
+        </CardContent>
+      </Card>
 
       {s.channels.length > 0 && (
         <Card>
