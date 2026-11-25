@@ -22,6 +22,8 @@ export function foldText(s: string): string {
 /** Tokens comparables: sin tildes, sin palabras vacías, plurales simples a singular, "wh-1000xm5" → "wh1000xm5". */
 export function tokenize(s: string): string[] {
   const folded = foldText(s)
+    // sinónimos de consolas: "PlayStation 5", "Play Station 5" → "ps5"
+    .replace(/\bplay\s?station\s?(\d)\b/g, "ps$1")
     // une códigos de modelo con guion: "wh-ch720n" → "whch720n", "wf-c510" → "wfc510"
     .replace(/\b([a-z]{1,4})-([a-z]{0,4}\d\w*)\b/g, "$1$2")
     // y con espacio cuando sigue un número: "wh 1000xm5", "ps 5"
@@ -30,8 +32,20 @@ export function tokenize(s: string): string[] {
   return folded
     .split(/[^a-z0-9"]+/)
     .map((t) => (t.length > 4 && t.endsWith("es") && !/\d/.test(t) ? t.slice(0, -2) : t.length > 3 && t.endsWith("s") && !/\d/.test(t) ? t.slice(0, -1) : t))
+    .map((t) => SYNONYMS[t] ?? t)
     .filter((t) => t.length > 1 && !STOPWORDS.has(t));
 }
+
+/** Palabras que las tiendas escriben de varias formas (ya sin tildes y en singular). */
+const SYNONYMS: Record<string, string> = {
+  televisor: "tv",
+  television: "tv",
+  televisore: "tv",
+  laptop: "notebook",
+  console: "consola",
+  headphone: "audifono",
+  celular: "smartphone",
+};
 
 /** Tokens con dígitos: modelos, capacidades y tallas (lo que distingue productos parecidos). */
 export function modelTokens(tokens: string[]): string[] {
@@ -58,6 +72,50 @@ export function relevance(query: ParsedQuery, title: string): number {
   if (query.models.some((m) => !t.has(m) && !joined.includes(m))) return 0;
   const hits = query.tokens.filter((q) => t.has(q) || [...t].some((x) => x.startsWith(q) || q.startsWith(x))).length;
   return hits / query.tokens.length;
+}
+
+/**
+ * Palabras que indican un accesorio, juego o repuesto "para" el producto buscado.
+ * Si aparecen ANTES de lo buscado ("Bolso para PS5", "Base cargadora consola PS5") y no las escribiste, no es lo que buscas.
+ */
+const ACCESSORY = new Set(
+  // Solo cosas que casi siempre son "para" otro producto (no "juego", "base" ni "kit": "Juego de sábanas", "Base cama").
+  ("bolso funda estuche case carcasa cover skin vinilo sticker protector mica lamina videojuego control joystick mando " +
+    "cable cargador cargadora soporte adaptador repuesto correa giftcard membresia suscripcion")
+    .split(" "),
+);
+
+/**
+ * ¿El título corresponde exactamente a lo buscado?
+ * - Con 1 a 3 palabras se exigen todas; con más, se tolera que falte una palabra genérica (nunca un modelo).
+ * - Se descartan accesorios y juegos ("Bolso para PS5") salvo que los hayas buscado.
+ */
+export function matchesQuery(query: ParsedQuery, title: string, brand?: string): boolean {
+  if (!query.tokens.length) return false;
+  // La marca va al final: así "Funda Sony…" sigue teniendo el accesorio antes de lo buscado.
+  const words = tokenize(`${title} ${brand ?? ""}`);
+  const set = new Set(words);
+  const joined = words.join(" ");
+  if (query.models.some((m) => !set.has(m) && !joined.includes(m))) return false;
+  const hit = (q: string) => words.findIndex((x) => x === q || x.startsWith(q) || (q.startsWith(x) && x.length >= 3));
+  const positions = query.tokens.map(hit);
+  const missing = positions.filter((p) => p < 0).length;
+  if (missing > (query.tokens.length > 3 ? 1 : 0)) return false;
+
+  const first = Math.min(...positions.filter((p) => p >= 0));
+  const wanted = new Set(query.tokens);
+  const accessoryBefore = words.slice(0, first).some((w) => ACCESSORY.has(w) && !wanted.has(w));
+  // "... para PS5", "compatible con PS5": accesorio aunque la palabra no esté en la lista.
+  const raw = foldText(title);
+  const forOther = /\b(para|compatible( con)?|compatibles)\b/.test(raw) && !/\b(para|compatible)\b/.test(foldText(query.raw))
+    ? (() => {
+        const idx = raw.search(/\b(para|compatible)\b/);
+        const before = tokenize(raw.slice(0, idx));
+        // Accesorio si antes de "para" no aparece nada de lo buscado.
+        return !query.tokens.some((q) => before.some((x) => x === q || x.startsWith(q)));
+      })()
+    : false;
+  return !accessoryBefore && !forOther;
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
@@ -109,13 +167,16 @@ export interface ResultGroup {
  * Agrupa resultados de varias tiendas. Un grupo no repite tienda (variantes de color de la misma tienda
  * quedan como grupos aparte). Orden: relevancia y luego precio.
  */
-export function groupResults(results: SearchResult[], query?: ParsedQuery): ResultGroup[] {
+export function groupResults(results: SearchResult[], query?: ParsedQuery, opts: { loose?: boolean } = {}): ResultGroup[] {
   const groups: ResultGroup[] = [];
   // Búsqueda por código de barras: la tienda ya filtró por EAN; se descartan solo los que traen OTRO EAN.
   const ean = query ? eanFromQuery(query) : undefined;
   for (const r of results) {
-    const rel = ean ? (r.ean && r.ean !== ean ? 0 : 1) : query ? relevance(query, `${r.brand ?? ""} ${r.title}`) : 1;
+    const text = `${r.brand ?? ""} ${r.title}`;
+    const rel = ean ? (r.ean && r.ean !== ean ? 0 : 1) : query ? relevance(query, text) : 1;
     if (query && rel < 0.5) continue;
+    // Por defecto, solo coincidencias exactas (sin accesorios ni juegos); `loose` muestra también las parecidas.
+    if (query && !ean && !opts.loose && !matchesQuery(query, r.title, r.brand)) continue;
     const item = { ...r, bestNoCard: bestPriceNoCard(r), bestWithCard: bestPriceWithCard(r) };
     const g = groups.find((g) => !g.items.some((i) => i.storeId === r.storeId) && g.items.some((i) => sameProduct(i, r)));
     if (g) {

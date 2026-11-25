@@ -2,6 +2,7 @@ import { EXTENSION_STORES, eanFromQuery, groupResults, type SearchResult } from 
 import { schema } from "@rastreador/db";
 import { Barcode, SearchX } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/empty-state";
@@ -15,8 +16,9 @@ import { getUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Resultados" };
 
-export default async function BuscarPage({ searchParams }: { searchParams: Promise<{ q?: string; ean?: string }> }) {
-  const { q: raw = "", ean: fromEan } = await searchParams;
+export default async function BuscarPage({ searchParams }: { searchParams: Promise<{ q?: string; ean?: string; todo?: string }> }) {
+  const { q: raw = "", ean: fromEan, todo } = await searchParams;
+  const loose = todo === "1";
   const q = parseQuery(raw);
   if (!q.tokens.length) redirect("/");
 
@@ -76,7 +78,7 @@ export default async function BuscarPage({ searchParams }: { searchParams: Promi
       </section>
 
       <Suspense fallback={<ResultsSkeleton />}>
-        <Results q={q} captured={[...known, ...captured.flatMap((c) => c.results)]} names={names} />
+        <Results q={q} loose={loose} captured={[...known, ...captured.flatMap((c) => c.results)]} names={names} />
       </Suspense>
     </div>
   );
@@ -84,15 +86,21 @@ export default async function BuscarPage({ searchParams }: { searchParams: Promi
 
 async function Results({
   q,
+  loose,
   captured,
   names,
 }: {
   q: ReturnType<typeof parseQuery>;
+  loose: boolean;
   captured: SearchResult[];
   names: Record<string, string>;
 }) {
   const server = await searchServerStores(q);
-  const groups = groupResults([...server.flatMap((s) => s.results), ...captured], q);
+  const all = [...server.flatMap((s) => s.results), ...captured];
+  const groups = groupResults(all, q, { loose });
+  // Cuántos productos parecidos (accesorios, juegos, otras palabras) quedaron fuera de la búsqueda exacta.
+  const hidden = loose ? 0 : groupResults(all, q, { loose: true }).length - groups.length;
+  const base = `/buscar?q=${encodeURIComponent(q.raw)}`;
   const issues = server.filter((s) => s.status === "limited" || s.status === "error" || s.status === "blocked");
 
   return (
@@ -100,6 +108,25 @@ async function Results({
       {issues.length > 0 && (
         <p className="rounded-xl bg-caution-soft p-3 text-sm text-caution">
           {issues.map((s) => `${s.storeName}: ${s.status === "limited" ? "muchas búsquedas seguidas, intenta en un minuto" : "no respondió"}`).join(" · ")}
+        </p>
+      )}
+      {hidden > 0 && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border bg-card p-3 text-sm text-muted-foreground">
+          <span>
+            Solo coincidencias exactas. Ocultamos {hidden} {hidden === 1 ? "resultado parecido" : "resultados parecidos"} (accesorios, juegos u
+            otros productos).
+          </span>
+          <Link href={`${base}&todo=1`} className="font-medium text-brand underline-offset-4 hover:underline">
+            Ver también los parecidos
+          </Link>
+        </p>
+      )}
+      {loose && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border bg-card p-3 text-sm text-muted-foreground">
+          <span>Mostrando también resultados parecidos.</span>
+          <Link href={base} className="font-medium text-brand underline-offset-4 hover:underline">
+            Solo exactos
+          </Link>
         </p>
       )}
       {!groups.length ? (

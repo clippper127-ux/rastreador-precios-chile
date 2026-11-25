@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseSfccSearch } from "./adapters/sfcc";
-import { groupResults, isValidEan, parseQuery, relevance, sameProduct, tokenize } from "./search";
+import { groupResults, isValidEan, matchesQuery, parseQuery, relevance, sameProduct, tokenize } from "./search";
 import type { SearchResult } from "./types";
 
 const r = (storeId: string, title: string, price: number, extra: Partial<SearchResult> = {}): SearchResult => ({
@@ -108,5 +108,41 @@ describe("búsqueda por código de barras", () => {
       parseQuery("7809601118854"),
     );
     expect(groups.flatMap((g) => g.items.map((i) => i.storeId))).toEqual(["jumbo", "lider"]);
+  });
+});
+
+describe("búsqueda exacta (consola ps5, 2026-11-25)", () => {
+  const q = parseQuery("consola ps5");
+  it("acepta la consola con cualquier forma de escribir PlayStation 5", () => {
+    expect(matchesQuery(q, "Consola PlayStation 5 Slim Digital 1TB", "Sony")).toBe(true);
+    expect(matchesQuery(q, "Consola PS5 Slim Estándar + Control", "PlayStation")).toBe(true);
+    expect(matchesQuery(q, "Consolas Play Station 5 Pro")).toBe(true);
+  });
+  it("descarta bolsos, juegos, controles y accesorios", () => {
+    expect(matchesQuery(q, "Bolso para PS5 Gris")).toBe(false);
+    expect(matchesQuery(q, "Juego Marvel's Spider-Man 2 PS5", "Sony")).toBe(false);
+    expect(matchesQuery(q, "Control DualSense PS5 Blanco", "Sony")).toBe(false);
+    expect(matchesQuery(q, "Base Cargadora Soporte para Consola PS5")).toBe(false);
+    expect(matchesQuery(q, "Funda Protectora Consola PS5")).toBe(false);
+  });
+  it("si buscas el accesorio, aparece", () => {
+    expect(matchesQuery(parseQuery("control ps5"), "Control DualSense PS5 Blanco")).toBe(true);
+    expect(matchesQuery(parseQuery("bolso ps5"), "Bolso para PS5 Gris")).toBe(true);
+  });
+  it("no rompe búsquedas comunes", () => {
+    expect(matchesQuery(parseQuery("sony wh1000xm5"), "Audífonos Sony WH-1000XM5 Bluetooth")).toBe(true);
+    expect(matchesQuery(parseQuery("sabanas 2 plazas"), "Juego de Sábanas 2 Plazas 144 Hilos")).toBe(true);
+    expect(matchesQuery(parseQuery("nutella"), "Crema de Avellana Nutella 200 g")).toBe(true);
+    // Consultas largas toleran una palabra genérica ausente, nunca un modelo.
+    expect(matchesQuery(parseQuery("smart tv samsung 55 crystal"), "Televisor Samsung 55\" Crystal UHD 4K")).toBe(true);
+    expect(matchesQuery(parseQuery("smart tv samsung 65 crystal"), "Televisor Samsung 55\" Crystal UHD 4K")).toBe(false);
+  });
+  it("groupResults oculta lo no exacto salvo con loose", () => {
+    const rs: SearchResult[] = [
+      { storeId: "hites", url: "https://a/1", title: "Consola PlayStation 5 Slim", priceNormal: 499990, stockStatus: "in_stock" },
+      { storeId: "hites", url: "https://a/2", title: "Bolso para PS5", priceNormal: 19990, stockStatus: "in_stock" },
+    ];
+    expect(groupResults(rs, q).map((g) => g.title)).toEqual(["Consola PlayStation 5 Slim"]);
+    expect(groupResults(rs, q, { loose: true })).toHaveLength(2);
   });
 });
