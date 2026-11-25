@@ -78,15 +78,19 @@ export function AlertSettingsForm({
             <legend className="mb-1 text-sm font-medium">Comparar con</legend>
             <div className="flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2">
-                <input type="checkbox" name="basis_no_card" defaultChecked={values.priceBasis !== "with_card"} className="size-4 accent-[var(--brand)]" />
+                <input type="radio" name="priceBasis" value="no_card" defaultChecked={values.priceBasis === "no_card"} className="accent-[var(--brand)]" />
                 Precio sin tarjeta
               </label>
               <label className="flex items-center gap-2">
-                <input type="checkbox" name="basis_with_card" defaultChecked={values.priceBasis !== "no_card"} className="size-4 accent-[var(--brand)]" />
+                <input type="radio" name="priceBasis" value="with_card" defaultChecked={values.priceBasis === "with_card"} className="accent-[var(--brand)]" />
                 Precio con tarjeta de la tienda
               </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="priceBasis" value="both" defaultChecked={values.priceBasis === "both"} className="accent-[var(--brand)]" />
+                Ambos
+              </label>
             </div>
-            <p className="text-xs text-muted-foreground">Con las dos marcadas te avisamos si cualquiera cumple, y el aviso dice cuál.</p>
+            <p className="text-xs text-muted-foreground">Con "Ambos" te avisamos si cualquiera de los dos cumple, y el aviso dice cuál.</p>
           </fieldset>
 
           <div className="grid gap-1 sm:grid-cols-2">
