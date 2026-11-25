@@ -3,6 +3,7 @@
 import { EXTENSION_STORES, adapters, parseListingUrl, sanitizeCapture, type StockStatus } from "@rastreador/core";
 import { schema } from "@rastreador/db";
 import { linkSoloTodo } from "@rastreador/db/solotodo";
+import { resolveLink } from "@rastreador/db/telegram";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -30,7 +31,9 @@ export async function trackUrl(rawUrl: string): Promise<TrackResult> {
   const user = await getUser();
   if (!user) redirect(`/login?next=/`);
 
-  const parsed = parseListingUrl(rawUrl);
+  let parsed = parseListingUrl(rawUrl);
+  // Links acortados o de compartir (meli.la/…, links de afiliados): se sigue la redirección hasta la tienda.
+  if (!parsed.ok && parsed.reason === "unsupported") parsed = parseListingUrl(await resolveLink(rawUrl.trim()));
   if (!parsed.ok) return { error: REASONS[parsed.reason] ?? "No pudimos usar ese link." };
 
   const d = db();

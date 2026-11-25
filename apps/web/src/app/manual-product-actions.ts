@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/supabase/server";
 import { ensureTracked } from "@/lib/track";
+import { resolveLink } from "@rastreador/db/telegram";
 
 export type ManualProductResult = { error: string; bad?: string[] } | { ok: string } | undefined;
 
@@ -34,7 +35,8 @@ async function validate(links: string[]): Promise<{ ok: Ok[]; bad: string[] }> {
     (await db().select({ id: schema.stores.id, enabled: schema.stores.enabled }).from(schema.stores)).filter((s) => s.enabled).map((s) => s.id),
   );
   for (const link of links) {
-    const p = parseListingUrl(link);
+    let p = parseListingUrl(link);
+    if (!p.ok && p.reason === "unsupported") p = parseListingUrl(await resolveLink(link));
     if (!p.ok) bad.push(`${link} → ${WHY[p.reason] ?? "no se pudo usar"}`);
     else if (!enabled.has(p.storeId)) bad.push(`${link} → ${p.storeName} está pausada`);
     else if (!ok.some((o) => o.url === p.url)) ok.push(p);

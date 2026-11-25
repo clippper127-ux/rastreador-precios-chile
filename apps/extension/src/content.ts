@@ -7,7 +7,8 @@ import {
   type ExtensionStore,
 } from "@rastreador/core";
 import { collectCandidates, jsonLdProduct, meta, productContainer } from "./dom";
-import { renderPanel, renderSearchPanel } from "./panel";
+import { panelHost, renderPanel, renderPickChoice, renderSearchPanel } from "./panel";
+import { applyPicks, clearPicks, cssPath, getPicks, priceIn, savePick, startPicker } from "./picker";
 import { captureSearchResults, isSearchPage, queryFromApp } from "./search-page";
 import type { IngestResponse, Msg } from "./shared";
 
@@ -132,14 +133,24 @@ async function run() {
   if (running) return;
   running = true;
   try {
+    // Tus selecciones de precio para esta tienda (modo "elegir en la página").
+    const rules = await getPicks(store.id);
+    const pickTools = {
+      picks: rules.length,
+      onPick: () => void pickPrice(store),
+      onClearPicks: async () => {
+        await clearPicks(store.id);
+        rerun();
+      },
+    };
     // Las tiendas cargan precios después del HTML: reintenta hasta ~8 s.
     let capture: CapturedProduct | null = null;
     for (let i = 0; i < 8 && !capture; i++) {
-      capture = capturePage(store);
+      capture = applyPicks(capturePage(store), rules, store);
       if (!capture) await new Promise((r) => setTimeout(r, 1000));
     }
     if (!capture) {
-      renderPanel({ store, capture: null, state: { error: "no_leido" }, onFollow: () => {} });
+      renderPanel({ store, capture: null, state: { error: "no_leido" }, onFollow: () => {}, ...pickTools });
       return;
     }
     const cap = capture;
@@ -149,6 +160,7 @@ async function run() {
         capture: cap,
         state,
         busy,
+        ...pickTools,
         onFollow: async () => {
           render(state, true);
           render(await send(cap, true));
@@ -159,6 +171,39 @@ async function run() {
   } finally {
     running = false;
   }
+}
+
+/** Vuelve a leer la ficha (después de elegir u olvidar un precio). */
+function rerun() {
+  lastUrl = "";
+  tick();
+}
+
+/** Modo selección: clic en el precio → elegir tipo → se guarda para la tienda y se vuelve a leer. */
+async function pickPrice(store: ExtensionStore) {
+  const host = panelHost() as HTMLElement | null;
+  if (host) host.style.display = "none";
+  const el = await startPicker(host);
+  if (host) host.style.display = "";
+  if (!el) {
+    rerun();
+    return;
+  }
+  const price = priceIn(el);
+  renderPickChoice({
+    store,
+    price,
+    onChoose: async (field) => {
+      if (field) {
+        await savePick(store.id, { selector: cssPath(el), field });
+        rerun();
+      } else if (price == null) {
+        void pickPrice(store);
+      } else {
+        rerun();
+      }
+    },
+  });
 }
 
 // Primera carga + navegación interna (Falabella y Ripley son apps de una sola página).

@@ -34,3 +34,14 @@ describe("SoloTodo → precio por tienda", () => {
     expect(o.priceCard).toBeUndefined();
   });
 });
+
+describe("links de Mercado Libre", () => {
+  it("acepta publicación, catálogo y producto de vendedor; limpia seguimiento", async () => {
+    const { parseListingUrl } = await import("./adapters");
+    const a = parseListingUrl("https://articulo.mercadolibre.cl/MLC-454613458-refrigerador-daewoo-_JM#position=1&tracking_id=x");
+    expect(a).toMatchObject({ ok: true, storeId: "mercadolibre", mode: "extension", url: "https://articulo.mercadolibre.cl/MLC-454613458-refrigerador-daewoo-_JM" });
+    expect(parseListingUrl("https://www.mercadolibre.cl/consola-ps5-slim/p/MLC27581930?pdp_filters=x")).toMatchObject({ ok: true, url: "https://mercadolibre.cl/consola-ps5-slim/p/MLC27581930" });
+    expect(parseListingUrl("https://www.mercadolibre.cl/up/MLCU123456789")).toMatchObject({ ok: true });
+    expect(parseListingUrl("https://listado.mercadolibre.cl/consola-ps5")).toMatchObject({ ok: false, reason: "not_product" });
+  });
+});

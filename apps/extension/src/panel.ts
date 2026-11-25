@@ -12,6 +12,10 @@ export interface PanelProps {
   state: IngestResponse;
   busy?: boolean;
   onFollow: () => void;
+  /** Cuántas selecciones manuales de precio hay para esta tienda. */
+  picks?: number;
+  onPick?: () => void;
+  onClearPicks?: () => void;
 }
 
 const CSS = `
@@ -53,6 +57,12 @@ button { font: inherit; cursor: pointer; border: 0; }
 a { color: var(--brand); text-decoration: none; font-weight: 600; }
 a:hover { text-decoration: underline; }
 svg.spark { width: 100%; height: 36px; display: block; }
+.tools { display: flex; flex-wrap: wrap; gap: 4px 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+.link { background: none; color: var(--brand); font-weight: 600; font-size: 12px; padding: 2px 0; }
+.link:hover { text-decoration: underline; }
+.choices { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.choice { background: var(--soft); color: var(--fg); border-radius: 10px; padding: 8px 4px; font-weight: 600; font-size: 12px; }
+.choice:hover { outline: 2px solid var(--brand); }
 .pill { position: fixed; right: 16px; bottom: 16px; z-index: 2147483646; }
 .pill button { display: flex; align-items: center; gap: 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--border);
   border-radius: 999px; padding: 8px 12px 8px 8px; font-weight: 600; box-shadow: 0 8px 24px -8px rgba(20,22,30,.3); }
@@ -165,10 +175,20 @@ export function renderPanel(props: PanelProps | null) {
           : ""
       }
       ${status}
+      ${
+        props.onPick && !busy
+          ? `<div class="tools">
+        <button type="button" class="link" data-act="pick">${props.picks ? "Volver a elegir el precio" : "¿Precio mal leído? Elígelo en la página"}</button>
+        ${props.picks ? `<button type="button" class="link" data-act="clear">Olvidar mi selección</button>` : ""}
+      </div>`
+          : ""
+      }
     </div>
   </section>`;
 
   root.querySelector('[data-act="collapse"]')?.addEventListener("click", () => setCollapsed(true));
+  root.querySelector('[data-act="pick"]')?.addEventListener("click", () => props.onPick?.());
+  root.querySelector('[data-act="clear"]')?.addEventListener("click", () => props.onClearPicks?.());
   const follow = root.querySelector<HTMLButtonElement>('[data-act="follow"]');
   if (follow) {
     follow.addEventListener("click", () => {
@@ -228,4 +248,50 @@ export function renderSearchPanel(props: SearchPanelProps) {
     send.disabled = true;
     props.onSend();
   });
+}
+
+/** Elemento del panel (para que el modo selección no lo tome como precio). */
+export function panelHost(): Element | null {
+  return host;
+}
+
+type PickChoice = "priceNormal" | "priceOffer" | "priceCard" | null;
+
+/** Después de hacer clic en un precio: ¿qué tipo de precio es? */
+export function renderPickChoice(props: { store: ExtensionStore; price?: number; onChoose: (field: PickChoice) => void }) {
+  lastProps = null;
+  if (!host) {
+    host = document.createElement("rastreador-precios-panel");
+    host.attachShadow({ mode: "open" });
+    document.documentElement.appendChild(host);
+  }
+  const root = host.shadowRoot!;
+  const body =
+    props.price == null
+      ? `<p class="muted">Eso no parece un precio. Haz clic justo sobre el número (por ejemplo "$19.990").</p>
+         <button type="button" class="primary" data-f="retry">Intentar de nuevo</button>`
+      : `<p>Leímos <span class="price">${esc(formatCLP(props.price))}</span></p>
+         <p class="muted">¿Qué precio es? Lo recordaremos para todas las fichas de ${esc(props.store.name)} en este navegador.</p>
+         <div class="choices">
+           <button type="button" class="choice" data-f="priceNormal">Normal</button>
+           <button type="button" class="choice" data-f="priceOffer">Oferta</button>
+           <button type="button" class="choice" data-f="priceCard">Con tarjeta</button>
+         </div>`;
+  root.innerHTML = `<style>${CSS}</style>
+  <section class="wrap" role="region" aria-label="Rastreador de precios">
+    <header>
+      <span class="logo">${LOGO}</span>
+      <span class="title">Elegir precio<small>${esc(props.store.name)}</small></span>
+      <button type="button" class="icon" data-f="cancel" aria-label="Cancelar">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="body">${body}</div>
+  </section>`;
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-f]")) {
+    b.addEventListener("click", () => {
+      const f = b.dataset.f!;
+      props.onChoose(f === "cancel" || f === "retry" ? null : (f as PickChoice));
+    });
+  }
 }

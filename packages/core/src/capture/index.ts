@@ -74,6 +74,16 @@ export const EXTENSION_STORES: ExtensionStore[] = [
     ownSellers: /^ripley/i,
   },
   {
+    // El servidor recibe "verificación de cuenta" (barrera anti-bots): se lee desde tu navegador.
+    id: "mercadolibre",
+    name: "Mercado Libre",
+    domain: "mercadolibre.cl",
+    // Publicación: /MLC-123456789-titulo-_JM · Catálogo: /titulo/p/MLC12345 · Producto de vendedor: /up/MLCU123
+    productPath: /^\/MLC-?\d+|\/p\/MLC\d+|\/up\/MLCU\d+/i,
+    cardName: "Mercado Pago",
+    ownSellers: /tienda oficial|mercado ?libre/i,
+  },
+  {
     id: "lider",
     name: "Lider",
     domain: "lider.cl",

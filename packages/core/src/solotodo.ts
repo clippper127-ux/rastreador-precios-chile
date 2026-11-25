@@ -28,6 +28,7 @@ export const SOLOTODO_STORES: Record<number, string> = {
   170: "tottus",
   197: "jumbo",
   4088: "santaisabel",
+  260: "mercadolibre",
 };
 
 /** Medio de pago del precio "oferta" de SoloTodo, por tienda (campo preferred_payment_method de /stores/, 2026-11-25). */

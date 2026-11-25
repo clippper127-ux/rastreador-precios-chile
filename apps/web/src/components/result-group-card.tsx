@@ -32,7 +32,9 @@ export function ResultGroupCard({ group, storeNames }: { group: ResultGroup; sto
     if (!p.ok) {
       setLinkError(
         p.reason === "unsupported"
-          ? "Todavía no seguimos esa tienda."
+          ? /meli\.la|mercadolibre\.com\/sec/i.test(link)
+            ? "Es un link corto: ábrelo y copia la dirección completa de la ficha (o pégalo en Mis seguimientos)."
+            : "Todavía no seguimos esa tienda."
           : p.reason === "not_product"
             ? `Ese link de ${p.storeName ?? "la tienda"} no es la ficha de un producto: abre el producto y copia su link.`
             : "Eso no parece un link válido.",

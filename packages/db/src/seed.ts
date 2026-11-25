@@ -93,13 +93,15 @@ const seed: Store[] = [
     id: "mercadolibre",
     name: "Mercado Libre",
     domain: "mercadolibre.cl",
-    sourceChain: ["api", "extension", "manual"],
+    sourceChain: ["feed", "extension", "manual"],
     searchMode: "link",
     searchUrlTemplate: "https://listado.mercadolibre.cl/{query}",
     minCheckIntervalMin: 240,
     maxRequestsPerMin: 30,
-    enabled: false,
-    notes: "API sin credenciales: 403 en /sites/MLC/search y /items. Requiere app registrada (OAuth).",
+    enabled: true,
+    notes:
+      "El servidor recibe /gz/account-verification (barrera anti-bots, 2026-11-25): no se evade. Precio vía extensión, " +
+      "SoloTodo (si tiene la publicación) o a mano. La API oficial pide app registrada (OAuth).",
   },
 
   // ── Extensión: bloquean al servidor ────────────────────────────────────────
