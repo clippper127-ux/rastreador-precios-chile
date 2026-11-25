@@ -159,6 +159,13 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
   (`t.me/s/canal`), sin cuenta. Solo se avisan mensajes posteriores a tu suscripción.
 - **Grupos:** vincula Telegram, en @BotFather haz `/setprivacy` → tu bot → **Disable**, agrega el bot
   al grupo y escribe `/radar` (y `/radar_off` para desactivarlo). Solo grupos que permiten bots.
+- **Grupos que no aceptan bots:** se leen con una **cuenta de Telegram dedicada** (no la personal):
+  1. Con esa cuenta entra a https://my.telegram.org → **API development tools** y crea una app (gratis).
+     Copia `api_id` y `api_hash` a `.env` como `TG_API_ID` y `TG_API_HASH`.
+  2. `pnpm telegram:login`: escribes el número, el código y la contraseña en la terminal; guarda `TG_SESSION` en `.env`.
+  3. `powershell -ExecutionPolicy Bypass -File scripts\github-secrets.ps1` para subir las tres a GitHub.
+  4. Une esa cuenta a los grupos. Cada hora se leen **todos** sus grupos y canales; los nuevos se suscriben
+     a quienes tienen Telegram vinculado (sus mensajes anteriores no se avisan). Solo lee: no escribe ni marca leído.
 - **Frecuencia:** el workflow `Radar` corre cada hora (`pnpm radar:once`, liviano). En tu PC puedes
   correrlo más seguido. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 

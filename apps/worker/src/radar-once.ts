@@ -3,6 +3,7 @@ import { httpTransport } from "@rastreador/db/alerts";
 import { notifyDealMatches, pollPublicChannels } from "@rastreador/db/radar";
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { env } from "./env";
+import { pollReaderAccount, readerConfig } from "./telegram-reader";
 
 /**
  * Pasada liviana del radar de ofertas (`pnpm radar:once`): solo Telegram, sin revisar tiendas.
@@ -15,12 +16,22 @@ async function main() {
     let bot = { processed: 0 };
     if (env.telegramToken) bot = await processTelegramUpdates(db, { token: env.telegramToken, appUrl: env.appUrl });
     const polled = await pollPublicChannels(db);
+    const cfg = readerConfig();
+    let reader = { chats: 0, newPosts: 0, errors: 0 };
+    if (cfg) {
+      try {
+        reader = await pollReaderAccount(db, cfg);
+      } catch (err) {
+        console.error("Cuenta dedicada de Telegram:", (err as Error).message);
+        reader.errors++;
+      }
+    }
     const notified = await notifyDealMatches(
       db,
       env.appUrl,
       httpTransport({ appUrl: env.appUrl, telegramToken: env.telegramToken, resendApiKey: env.resendApiKey, resendFrom: env.resendFrom }),
     );
-    console.log(`Radar: ${polled.channels} canales, ${polled.newPosts} mensajes nuevos, ${polled.errors} errores · bot: ${bot.processed} · avisos: ${notified}`);
+    console.log(`Radar: ${polled.channels} canales, ${polled.newPosts} mensajes nuevos, ${polled.errors} errores · cuenta dedicada: ${reader.chats} grupos, ${reader.newPosts} mensajes nuevos, ${reader.errors} errores · bot: ${bot.processed} · avisos: ${notified}`);
   } finally {
     await db.$client.end();
   }

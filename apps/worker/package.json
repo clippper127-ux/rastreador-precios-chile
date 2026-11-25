@@ -9,13 +9,15 @@
     "probe": "tsx --use-system-ca src/probe.ts",
     "smoke": "tsx --use-system-ca src/smoke.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "radar:once": "tsx --use-system-ca src/radar-once.ts"
+    "radar:once": "tsx --use-system-ca src/radar-once.ts",
+    "telegram:login": "tsx --use-system-ca src/telegram-login.ts"
   },
   "dependencies": {
     "@rastreador/core": "workspace:*",
     "@rastreador/db": "workspace:*",
     "dotenv": "^17.0.0",
-    "drizzle-orm": "^0.44.0"
+    "drizzle-orm": "^0.44.0",
+    "telegram": "^2.26.22"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

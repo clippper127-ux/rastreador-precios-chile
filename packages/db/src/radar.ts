@@ -8,7 +8,7 @@ import {
   type Interest,
   type RawPost,
 } from "@rastreador/core";
-import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Transport } from "./alerts";
 import type { Database } from "./client";
 import * as schema from "./schema";
@@ -265,4 +265,46 @@ export async function ingestGroupMessage(db: Database, chatId: number, post: Raw
       .where(eq(schema.dealChannels.id, id));
   }
   return ids.length > 0;
+}
+
+// ─── Grupos leídos con una cuenta de Telegram dedicada (MTProto) ──────────────
+
+/** Estado de un grupo leído por la cuenta dedicada (id "u:<chat_id>"); `undefined` si es la primera vez. */
+export async function readerChatState(db: Database, chatId: number) {
+  return db.query.dealChannels.findFirst({ where: eq(schema.dealChannels.id, `u:${chatId}`) });
+}
+
+/**
+ * Guarda mensajes de un grupo que lee la cuenta dedicada y los cruza con los suscriptores.
+ * La primera vez que aparece un grupo se suscribe a quienes tienen Telegram vinculado y sus mensajes
+ * recientes se guardan sin avisar (son anteriores). Devuelve cuántos mensajes nuevos se guardaron.
+ */
+export async function ingestReaderChat(
+  db: Database,
+  chat: { chatId: number; title: string; handle?: string },
+  posts: RawPost[],
+): Promise<number> {
+  const id = `u:${chat.chatId}`;
+  const existing = await readerChatState(db, chat.chatId);
+  if (!existing) {
+    await db.insert(schema.dealChannels).values({ id, kind: "group", chatId: chat.chatId, handle: chat.handle ?? null, title: chat.title, lastPostId: 0 });
+    // Se suscribe a quienes tienen Telegram vinculado (los que recibirán los avisos).
+    const owners = await db.select({ id: schema.profiles.id }).from(schema.profiles).where(isNotNull(schema.profiles.telegramChatId));
+    for (const a of owners) {
+      await db.insert(schema.dealSubscriptions).values({ userId: a.id, channelId: id }).onConflictDoNothing();
+    }
+  }
+  const fresh = posts.filter((p) => p.id > (existing?.lastPostId ?? 0));
+  const ids = await storePosts(db, id, fresh);
+  if (existing) await matchPosts(db, ids);
+  await db
+    .update(schema.dealChannels)
+    .set({
+      title: chat.title,
+      lastPostId: Math.max(existing?.lastPostId ?? 0, ...posts.map((p) => p.id)),
+      lastCheckedAt: new Date(),
+      lastError: null,
+    })
+    .where(eq(schema.dealChannels.id, id));
+  return existing ? ids.length : 0;
 }

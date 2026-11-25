@@ -4,7 +4,8 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $gh = "C:\Program Files\GitHub CLI\gh.exe"
-$wanted = @("DATABASE_URL", "DATABASE_URL_MIGRATIONS", "TELEGRAM_BOT_TOKEN", "RESEND_API_KEY", "HEALTHCHECK_URL")
+$wanted = @("DATABASE_URL", "DATABASE_URL_MIGRATIONS", "TELEGRAM_BOT_TOKEN", "RESEND_API_KEY", "HEALTHCHECK_URL",
+  "TG_API_ID", "TG_API_HASH", "TG_SESSION")
 
 $values = @{}
 foreach ($line in Get-Content (Join-Path $root ".env")) {
