@@ -1,0 +1,1 @@
+ALTER TABLE "listings" ADD COLUMN "solotodo_history_at" timestamp with time zone;

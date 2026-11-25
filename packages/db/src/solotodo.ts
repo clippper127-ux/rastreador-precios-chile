@@ -1,4 +1,14 @@
-import { adapters, offerFromEntity, parseListingUrl, solotodoEntity, solotodoSearch, type AdapterContext } from "@rastreador/core";
+import {
+  adapters,
+  compactHistory,
+  offerFromEntity,
+  parseListingUrl,
+  SOLOTODO_STORES,
+  solotodoEntity,
+  solotodoHistory,
+  solotodoSearch,
+  type AdapterContext,
+} from "@rastreador/core";
 import { and, eq, inArray, isNotNull, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import type { Database } from "./client";
 import * as schema from "./schema";
@@ -30,6 +40,8 @@ export interface SoloTodoSummary {
   refreshed: number;
   changed: number;
   resolved: number;
+  /** Puntos de historial importados desde SoloTodo. */
+  history: number;
   errors: number;
 }
 
@@ -37,8 +49,12 @@ export interface SoloTodoSummary {
  * 1) Actualiza el precio de las publicaciones ya enlazadas a SoloTodo (tiendas sin adaptador de servidor).
  * 2) Intenta enlazar las que aún no lo están, buscando su título en SoloTodo y comparando el link.
  */
-export async function soloTodoPass(db: Database, ctx: AdapterContext, opts: { refresh?: number; resolve?: number } = {}): Promise<SoloTodoSummary> {
-  const sum: SoloTodoSummary = { refreshed: 0, changed: 0, resolved: 0, errors: 0 };
+export async function soloTodoPass(
+  db: Database,
+  ctx: AdapterContext,
+  opts: { refresh?: number; resolve?: number; history?: number } = {},
+): Promise<SoloTodoSummary> {
+  const sum: SoloTodoSummary = { refreshed: 0, changed: 0, resolved: 0, history: 0, errors: 0 };
   const api = politeSoloTodo(ctx);
   const followed = sql`exists (select 1 from watch_listings wl join watches w on w.id = wl.watch_id where wl.listing_id = ${schema.listings.id} and wl.enabled and w.active)`;
 
@@ -108,7 +124,51 @@ export async function soloTodoPass(db: Database, ctx: AdapterContext, opts: { re
       await db.update(schema.listings).set({ solotodoCheckedAt: new Date() }).where(eq(schema.listings.id, l.id));
     }
   }
+  // 3) Historial previo (una vez por publicación enlazada).
+  const toImport = await db
+    .select({ id: schema.listings.id, entity: schema.listings.solotodoEntityId })
+    .from(schema.listings)
+    .where(and(eq(schema.listings.status, "active"), isNotNull(schema.listings.solotodoEntityId), isNull(schema.listings.solotodoHistoryAt), followed))
+    .limit(opts.history ?? 10);
+  for (const l of toImport) {
+    try {
+      sum.history += await importSoloTodoHistory(db, l.id, l.entity!, api);
+    } catch {
+      sum.errors++;
+    }
+  }
   return sum;
+}
+
+/**
+ * Importa el historial del último año desde SoloTodo, solo ANTES de nuestro primer precio guardado
+ * (no mezcla con datos propios) y sin generar avisos (son precios pasados). Una vez por publicación.
+ */
+export async function importSoloTodoHistory(db: Database, listingId: string, entityId: number, ctx: AdapterContext, days = 365): Promise<number> {
+  const listing = await db.query.listings.findFirst({ where: eq(schema.listings.id, listingId) });
+  if (!listing || listing.solotodoHistoryAt) return 0;
+  const stStore = Number(Object.entries(SOLOTODO_STORES).find(([, id]) => id === listing.storeId)?.[0] ?? 0);
+  const regs = await solotodoHistory(entityId, ctx, new Date(Date.now() - days * 86_400_000));
+  const [{ first } = { first: null }] = (await db.execute(
+    sql`select min(observed_at) as first from price_snapshots where listing_id = ${listingId}`,
+  )) as unknown as { first: string | Date | null }[];
+  const firstAt = first ? new Date(first) : null;
+  const points = compactHistory(regs, stStore).filter((p) => !firstAt || p.observedAt < firstAt);
+  for (let i = 0; i < points.length; i += 500) {
+    await db.insert(schema.priceSnapshots).values(
+      points.slice(i, i + 500).map((p) => ({
+        listingId,
+        observedAt: p.observedAt,
+        priceNormal: p.priceNormal ?? null,
+        priceCard: p.priceCard ?? null,
+        cardName: p.cardName ?? null,
+        stockStatus: p.stockStatus,
+        source: "feed" as const,
+      })),
+    );
+  }
+  await db.update(schema.listings).set({ solotodoHistoryAt: new Date() }).where(eq(schema.listings.id, listingId));
+  return points.length;
 }
 
 /** Guarda el enlace a SoloTodo de publicaciones seguidas desde la búsqueda. */

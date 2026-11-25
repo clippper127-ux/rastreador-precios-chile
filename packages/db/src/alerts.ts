@@ -60,7 +60,7 @@ export async function queueAlertsForSnapshot(
       },
       prev: args.prev,
       next: args.next,
-      previousMin: (watch.priceBasis === "with_card" ? hist?.min_with_card : hist?.min_no_card) ?? null,
+      previousMin: (watch.priceBasis === "no_card" ? hist?.min_no_card : hist?.min_with_card) ?? null,
       previousSnapshots: hist?.n ?? 0,
       sellerType: args.sellerType,
     });

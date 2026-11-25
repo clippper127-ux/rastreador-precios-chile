@@ -49,8 +49,13 @@ try {
       .where(and(eq(schema.priceSnapshots.source, "feed"), sql`${schema.priceSnapshots.listingId} in (${ta.listingId}, ${tb.listingId})`));
     check("3. Historial con fuente SoloTodo para ambos", new Set(snaps.map((s) => s.listingId)).size === 2, snaps);
 
+    const old = await db.execute(sql`
+      select listing_id, count(*)::int as n, min(observed_at) as first from price_snapshots
+      where listing_id in (${ta.listingId}, ${tb.listingId}) and observed_at < now() - interval '7 days' group by listing_id`);
+    check("5. Historial previo importado desde SoloTodo", sum.history > 0 && old.length >= 1, { history: sum.history, old });
+
     const again = await soloTodoPass(db, ctx, { refresh: 10, resolve: 10 });
-    check("4. Segunda pasada inmediata no repite requests (cada 3 h)", again.refreshed === 0 && again.resolved === 0, again);
+    check("4. Segunda pasada inmediata no repite requests (cada 3 h)", again.refreshed === 0 && again.resolved === 0 && again.history === 0, again);
   }
 } finally {
   await db.execute(sql`delete from products p where exists (select 1 from watches w where w.product_id = p.id and w.user_id = ${userId})`);

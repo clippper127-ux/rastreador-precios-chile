@@ -48,3 +48,27 @@ $<HTMLFormElement>("form").addEventListener("submit", async (e) => {
     save.disabled = false;
   }
 });
+
+// "Elegir el precio en esta página": le pide al content script de la pestaña activa que entre en modo selección.
+const pickBox = $<HTMLElement>("pickBox");
+const pickMsg = $<HTMLParagraphElement>("pickMsg");
+const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+let pickable = false;
+if (tab?.id != null) {
+  try {
+    const r = (await chrome.tabs.sendMessage(tab.id, { type: "canPick" })) as { ok?: boolean } | undefined;
+    pickable = !!r?.ok;
+  } catch {
+    pickable = false;
+  }
+}
+if (pickable) pickBox.hidden = false;
+else {
+  pickMsg.hidden = false;
+  pickMsg.textContent = "Abre la ficha de un producto de una tienda soportada para elegir su precio. Si ya la tenías abierta, recarga la página.";
+}
+$<HTMLButtonElement>("pick").addEventListener("click", async () => {
+  if (tab?.id == null) return;
+  await chrome.tabs.sendMessage(tab.id, { type: "startPick" });
+  window.close();
+});

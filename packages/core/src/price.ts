@@ -42,10 +42,12 @@ export function bestPriceWithCard(p: PriceFields): CLP | undefined {
   return minDefined(p.priceCard, p.priceOffer, p.priceNormal);
 }
 
-export type PriceBasis = "no_card" | "with_card";
+/** "both": avisa si cualquiera de los dos precios (sin tarjeta o con tarjeta) cumple la condición. */
+export type PriceBasis = "no_card" | "with_card" | "both";
 
 export function effectivePrice(p: PriceFields, basis: PriceBasis): CLP | undefined {
-  return basis === "with_card" ? bestPriceWithCard(p) : bestPriceNoCard(p);
+  // "both" usa el menor de los dos: si cualquiera baja, cuenta.
+  return basis === "no_card" ? bestPriceNoCard(p) : bestPriceWithCard(p);
 }
 
 export interface PriceState extends PriceFields {

@@ -206,6 +206,17 @@ async function pickPrice(store: ExtensionStore) {
   });
 }
 
+// Desde el ícono de la extensión: "Elegir el precio en esta página".
+chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, reply) => {
+  const store = extensionStoreForUrl(location.href);
+  const ok = !!store && store.productPath.test(location.pathname);
+  if (msg?.type === "canPick") reply({ ok });
+  if (msg?.type === "startPick" && store && ok) {
+    reply({ ok: true });
+    void pickPrice(store);
+  }
+});
+
 // Primera carga + navegación interna (Falabella y Ripley son apps de una sola página).
 function tick() {
   if (location.href !== lastUrl) {

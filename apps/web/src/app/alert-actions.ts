@@ -100,7 +100,10 @@ export async function saveAlertSettings(productId: string, _prev: ActionMsg, for
   if (!user) redirect("/login");
   const dropRaw = Number.parseFloat(String(form.get("dropPct") ?? "").replace(",", "."));
   const channels = ["telegram", "email"].filter((c) => form.get(`ch_${c}`) === "on");
-  const basis = form.get("priceBasis") === "with_card" ? "with_card" : "no_card";
+  // Casillas: sin tarjeta y/o con tarjeta. Las dos (o ninguna) = "ambos precios".
+  const noCard = form.get("basis_no_card") === "on";
+  const withCard = form.get("basis_with_card") === "on";
+  const basis = noCard && !withCard ? "no_card" : withCard && !noCard ? "with_card" : "both";
   const target = clp(form.get("target"));
 
   const d = db();

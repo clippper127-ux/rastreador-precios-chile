@@ -136,3 +136,52 @@ export async function solotodoSearch(query: string, ctx: AdapterContext, limit =
 export async function solotodoEntity(id: number, ctx: AdapterContext): Promise<SoloTodoEntity> {
   return getJson<SoloTodoEntity>(ctx, `${SOLOTODO_API}/entities/${id}/`);
 }
+
+// ─── Historial de precios ────────────────────────────────────────────────────
+
+export interface SoloTodoRegistry {
+  timestamp: string;
+  is_available: boolean;
+  normal_price: string;
+  offer_price: string;
+}
+
+export interface HistoryPoint {
+  observedAt: Date;
+  priceNormal?: number;
+  priceCard?: number;
+  cardName?: string;
+  stockStatus: "in_stock" | "out_of_stock";
+}
+
+/** Registros de precio de una publicación desde `since` (SoloTodo guarda varios por día). */
+export async function solotodoHistory(id: number, ctx: AdapterContext, since: Date): Promise<SoloTodoRegistry[]> {
+  return getJson<SoloTodoRegistry[]>(ctx, `${SOLOTODO_API}/entities/${id}/pricing_history/?timestamp_after=${encodeURIComponent(since.toISOString())}`);
+}
+
+/**
+ * Compacta el historial: solo los momentos en que cambió el precio o el stock (igual que nuestros snapshots).
+ * Ordena por fecha y descarta registros sin precio válido.
+ */
+export function compactHistory(regs: SoloTodoRegistry[], solotodoStoreId: number): HistoryPoint[] {
+  const out: HistoryPoint[] = [];
+  const sorted = [...regs].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  for (const r of sorted) {
+    const t = new Date(r.timestamp);
+    const normal = clp(r.normal_price);
+    const offer = clp(r.offer_price);
+    if (Number.isNaN(t.getTime()) || (normal ?? offer) == null) continue;
+    const card = offer && normal && offer < normal ? offer : undefined;
+    const point: HistoryPoint = {
+      observedAt: t,
+      priceNormal: normal ?? offer,
+      priceCard: card,
+      cardName: card ? (PAYMENT[solotodoStoreId] ?? "Medio de pago específico") : undefined,
+      stockStatus: r.is_available ? "in_stock" : "out_of_stock",
+    };
+    const last = out[out.length - 1];
+    if (last && last.priceNormal === point.priceNormal && last.priceCard === point.priceCard && last.stockStatus === point.stockStatus) continue;
+    out.push(point);
+  }
+  return out;
+}

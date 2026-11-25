@@ -1,4 +1,4 @@
-import { effectivePrice, formatCLP, type PriceBasis, type PriceState } from "./price";
+import { bestPriceNoCard, effectivePrice, formatCLP, type PriceBasis, type PriceState } from "./price";
 import type { CLP } from "./types";
 
 /*
@@ -51,6 +51,12 @@ export function evaluateAlerts(input: AlertInput): AlertEvaluation {
   const price = effectivePrice(next, rules.priceBasis);
   const prevPrice = prev ? effectivePrice(prev, rules.priceBasis) : undefined;
   let targetArmed = rules.targetArmed;
+  // Con "ambos precios", el aviso dice cuál de los dos cumplió.
+  const which = (limit: number) => {
+    if (rules.priceBasis !== "both") return "";
+    const noCard = bestPriceNoCard(next);
+    return noCard != null && noCard <= limit ? " (sin tarjeta)" : ` (con ${next.cardName ?? "tarjeta"})`;
+  };
 
   if (rules.excludeThirdParty && input.sellerType === "third_party") return { events, targetArmed };
 
@@ -65,7 +71,7 @@ export function evaluateAlerts(input: AlertInput): AlertEvaluation {
   if (rules.targetPrice != null) {
     if (price <= rules.targetPrice) {
       if (targetArmed) {
-        events.push({ kind: "target", price, reason: `Bajó de tu precio objetivo (${formatCLP(rules.targetPrice)})` });
+        events.push({ kind: "target", price, reason: `Bajó de tu precio objetivo (${formatCLP(rules.targetPrice)})${which(rules.targetPrice)}` });
         targetArmed = false;
       }
     } else {
@@ -77,13 +83,14 @@ export function evaluateAlerts(input: AlertInput): AlertEvaluation {
   if (rules.dropPct != null && rules.dropPct > 0 && prevPrice != null && price < prevPrice) {
     const pct = ((prevPrice - price) / prevPrice) * 100;
     if (pct >= rules.dropPct) {
-      events.push({ kind: "drop_pct", price, reason: `Bajó ${Math.round(pct)}% (antes ${formatCLP(prevPrice)})` });
+      events.push({ kind: "drop_pct", price, reason: `Bajó ${Math.round(pct)}% (antes ${formatCLP(prevPrice)})${which(price)}` });
     }
   }
 
   // Nuevo mínimo histórico (estrictamente menor que todo lo anterior).
-  if (rules.notifyAllTimeLow && input.previousSnapshots > 0 && input.previousMin != null && price < input.previousMin) {
-    events.push({ kind: "all_time_low", price, reason: `Mínimo histórico (antes ${formatCLP(input.previousMin)})` });
+  // Requiere un precio anterior: el primero que vemos (p. ej. recién importado el historial) no es una "baja".
+  if (rules.notifyAllTimeLow && prev && input.previousSnapshots > 0 && input.previousMin != null && price < input.previousMin) {
+    events.push({ kind: "all_time_low", price, reason: `Mínimo histórico (antes ${formatCLP(input.previousMin)})${which(price)}` });
   }
 
   return { events, targetArmed };

@@ -93,3 +93,24 @@ describe("alertas", () => {
     expect(m.text).toContain("• Mínimo histórico");
   });
 });
+
+describe("ambos precios (sin y con tarjeta)", () => {
+  it("avisa si cualquiera cumple y dice cuál", () => {
+    const r = evaluateAlerts({
+      rules: rules({ targetPrice: 100000, priceBasis: "both", notifyAllTimeLow: false }),
+      prev: null,
+      next: { priceNormal: 120000, priceCard: 95000, cardName: "Tarjeta CMR", stockStatus: "in_stock" },
+      previousMin: null,
+      previousSnapshots: 0,
+    });
+    expect(r.events[0]?.reason).toContain("(con Tarjeta CMR)");
+    const r2 = evaluateAlerts({
+      rules: rules({ targetPrice: 100000, priceBasis: "both", notifyAllTimeLow: false }),
+      prev: null,
+      next: { priceNormal: 99000, priceCard: 95000, stockStatus: "in_stock" },
+      previousMin: null,
+      previousSnapshots: 0,
+    });
+    expect(r2.events[0]?.reason).toContain("(sin tarjeta)");
+  });
+});

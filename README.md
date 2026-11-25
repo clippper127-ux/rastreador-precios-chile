@@ -96,6 +96,9 @@ de **Falabella, Paris, Ripley, Lider, PC Factory, Sodimac y Tottus** sin la exte
   sin mezclar versiones;
 - al seguirlos, el worker actualiza su precio cada ~3 h (máx. 60 por pasada, con pausa entre requests);
 - si pegaste un link de esas tiendas, el worker intenta encontrarlo en SoloTodo una vez por semana.
+- **historial previo**: al enlazar una publicación se importa su historial del último año desde SoloTodo
+  (solo los cambios, antes de nuestro primer precio y sin generar avisos), así el gráfico, el mínimo histórico
+  y "¿compro o espero?" funcionan desde el primer día.
 
 El precio "oferta" de SoloTodo es con el medio de pago preferente de la tienda (Tarjeta CMR, Ripley, Cencosud…),
 por eso se guarda como precio con tarjeta. Uso moderado (caché de 30 min, 10 búsquedas/min).

@@ -45,3 +45,27 @@ describe("links de Mercado Libre", () => {
     expect(parseListingUrl("https://listado.mercadolibre.cl/consola-ps5")).toMatchObject({ ok: false, reason: "not_product" });
   });
 });
+
+describe("historial de SoloTodo", () => {
+  it("guarda solo los cambios, ordenados, con el medio de pago de la tienda", async () => {
+    const { compactHistory } = await import("./solotodo");
+    const reg = (t: string, n: string, o: string, a = true) => ({ timestamp: t, is_available: a, normal_price: n, offer_price: o });
+    const pts = compactHistory(
+      [
+        reg("2026-09-12T10:00:00Z", "699990", "678990"),
+        reg("2026-09-10T10:00:00Z", "699990", "678990"),
+        reg("2026-09-11T10:00:00Z", "699990", "678990"),
+        reg("2026-10-01T10:00:00Z", "649990", "649990"),
+        reg("2026-10-05T10:00:00Z", "649990", "649990", false),
+        reg("2026-10-06T10:00:00Z", "0", "0"),
+      ],
+      9,
+    );
+    expect(pts.map((p) => [p.observedAt.toISOString().slice(0, 10), p.priceNormal, p.priceCard ?? null, p.stockStatus])).toEqual([
+      ["2026-09-10", 699990, 678990, "in_stock"],
+      ["2026-10-01", 649990, null, "in_stock"],
+      ["2026-10-05", 649990, null, "out_of_stock"],
+    ]);
+    expect(pts[0]!.cardName).toBe("Tarjeta CMR");
+  });
+});

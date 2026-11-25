@@ -57,7 +57,7 @@ export const strategyKindEnum = pgEnum("strategy_kind", [
 export const strategyStatusEnum = pgEnum("strategy_status", ["proposed", "approved", "disabled"]);
 export const strategyOriginEnum = pgEnum("strategy_origin", ["builtin", "human", "ai"]);
 export const listingStatusEnum = pgEnum("listing_status", ["active", "archived"]);
-export const priceBasisEnum = pgEnum("price_basis", ["no_card", "with_card"]);
+export const priceBasisEnum = pgEnum("price_basis", ["no_card", "with_card", "both"]);
 export const alertKindEnum = pgEnum("alert_kind", ["target", "drop_pct", "all_time_low", "restock"]);
 export const alertStatusEnum = pgEnum("alert_status", ["pending", "sent", "failed"]);
 export const runnerEnum = pgEnum("runner", ["gha", "local"]);
@@ -196,6 +196,8 @@ export const listings = pgTable(
     solotodoEntityId: bigint("solotodo_entity_id", { mode: "number" }),
     /** Último intento de encontrarla en SoloTodo (para no buscar en cada pasada). */
     solotodoCheckedAt: ts("solotodo_checked_at"),
+    /** Cuándo se importó el historial de precios desde SoloTodo (una sola vez). */
+    solotodoHistoryAt: ts("solotodo_history_at"),
     ean: text("ean"),
     title: text("title").notNull(),
     imageUrl: text("image_url"),

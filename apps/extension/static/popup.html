@@ -25,6 +25,12 @@
   <body>
     <main>
       <h1>Rastreador de precios</h1>
+      <section id="pickBox" hidden>
+        <button id="pick" type="button">Elegir el precio en esta página</button>
+        <p style="margin-top:6px">Haz clic sobre el precio en la ficha y dinos si es normal, oferta o con tarjeta. Se recuerda para toda la tienda.</p>
+      </section>
+      <p id="pickMsg" hidden></p>
+      <hr style="border:0;border-top:1px solid var(--border);margin:0;width:100%" />
       <p>Pega el token que generas en la app, en <strong>Ajustes → Extensión de navegador</strong>.</p>
       <form id="form">
         <label>Dirección de la app <input id="apiUrl" type="url" required placeholder="https://rastreador-precios-chile.vercel.app" /></label>
@@ -34,7 +40,7 @@
         <button id="save" type="submit">Guardar y probar</button>
       </form>
       <p id="status" role="status" aria-live="polite"></p>
-      <small>Solo lee fichas de producto de Falabella, Paris, Ripley y Lider, y solo guarda precios de lo que sigues.</small>
+      <small>Solo lee fichas y búsquedas de Falabella, Sodimac, Tottus, Paris, Ripley, Lider, PC Factory y Mercado Libre, y solo guarda precios de lo que sigues.</small>
     </main>
     <script src="popup.js" type="module"></script>
   </body>

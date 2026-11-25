@@ -1,0 +1,1 @@
+ALTER TYPE "public"."price_basis" ADD VALUE 'both';

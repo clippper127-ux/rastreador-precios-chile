@@ -205,7 +205,7 @@ export interface ProductDetail {
     notifyAllTimeLow: boolean;
     notifyRestock: boolean;
     excludeThirdParty: boolean;
-    priceBasis: "no_card" | "with_card";
+    priceBasis: "no_card" | "with_card" | "both";
     channels: string[];
   };
   hasThirdParty: boolean;

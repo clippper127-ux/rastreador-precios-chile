@@ -2,7 +2,7 @@
 
 import { EXTENSION_STORES, adapters, parseListingUrl, sanitizeCapture, type StockStatus } from "@rastreador/core";
 import { schema } from "@rastreador/db";
-import { linkSoloTodo } from "@rastreador/db/solotodo";
+import { importSoloTodoHistory, linkSoloTodo } from "@rastreador/db/solotodo";
 import { resolveLink } from "@rastreador/db/telegram";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -14,6 +14,8 @@ import { getUser } from "@/lib/supabase/server";
 import { ensureTracked, recordCapture, userFollowsListing } from "@/lib/track";
 
 export type TrackResult = { error: string } | undefined;
+
+const SOLOTODO_UA = process.env.WORKER_USER_AGENT ?? "RastreadorPreciosPersonal/0.1 (uso personal; seguimiento de precios)";
 
 const SUPPORTED = [...adapters.map((a) => a.name), ...EXTENSION_STORES.map((s) => s.name)].join(", ");
 const REASONS: Record<string, string> = {
@@ -157,6 +159,17 @@ export async function followGroup(items: FollowItem[]): Promise<TrackResult> {
     productId ??= ids.productId;
     const viaSoloTodo = Number.isInteger(it.solotodoEntityId) && (it.solotodoEntityId ?? 0) > 0;
     if (viaSoloTodo) await linkSoloTodo(d, [{ listingId: ids.listingId, entityId: it.solotodoEntityId! }]);
+    if (viaSoloTodo) {
+      // Historial previo desde SoloTodo, antes del primer precio propio (así el gráfico no parte vacío).
+      try {
+        await importSoloTodoHistory(d, ids.listingId, it.solotodoEntityId!, {
+          fetch: (u, init) =>
+            fetch(u, { ...init, headers: { "user-agent": SOLOTODO_UA, ...(init?.headers as Record<string, string>) }, signal: AbortSignal.timeout(8_000) }),
+        });
+      } catch {
+        /* el worker lo reintenta en la próxima pasada */
+      }
+    }
     if (cap) await recordCapture(d, ids.listingId, cap, viaSoloTodo ? "feed" : parsed.mode === "server" ? "server" : "extension", user.id);
   }
   if (!productId) return { error: "No pudimos seguir esas publicaciones." };

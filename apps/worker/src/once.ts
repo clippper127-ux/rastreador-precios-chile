@@ -19,7 +19,7 @@ async function main() {
     const summary = await runPass(db);
 
     // Tiendas que bloquean al servidor (Falabella, Paris, Ripley, Lider…): precio vía la API pública de SoloTodo.
-    let solotodo = { refreshed: 0, changed: 0, resolved: 0, errors: 0 };
+    let solotodo = { refreshed: 0, changed: 0, resolved: 0, history: 0, errors: 0 };
     try {
       solotodo = await soloTodoPass(db, {
         fetch: (u, init) =>
@@ -72,7 +72,7 @@ async function main() {
         `${summary.snapshots} cambios, ${summary.errors} errores` +
         (summary.blockedStores.length ? `, bloqueadas: ${summary.blockedStores.join(", ")}` : ""),
     );
-    console.log(`  solotodo: ${solotodo.refreshed} actualizados, ${solotodo.resolved} enlazados, ${solotodo.changed} cambios, ${solotodo.errors} errores`);
+    console.log(`  solotodo: ${solotodo.refreshed} actualizados, ${solotodo.resolved} enlazados, ${solotodo.history} puntos de historial, ${solotodo.changed} cambios, ${solotodo.errors} errores`);
     console.log(`  alertas: ${delivery.sent} enviadas, ${delivery.failed} fallidas · bot: ${bot.processed} mensajes · radar: ${radar.channels} canales, ${radar.newPosts} mensajes nuevos, ${radar.notified} avisos`);
     for (const [store, s] of Object.entries(summary.byStore)) console.log(`  ${store}: ${s.ok} ok, ${s.errors} errores`);
     await ping(summary.errors > 0 && summary.checked === 0 ? "fail" : "success", JSON.stringify(summary));
