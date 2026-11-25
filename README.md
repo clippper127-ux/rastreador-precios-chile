@@ -72,6 +72,21 @@ Reglas: respetar `robots.txt`, User-Agent honesto, nada con login, preferir dato
   Para probarlo en tu PC: `pnpm worker:once`. Para una prueba completa sin datos de usuarios: `pnpm --filter @rastreador/worker smoke`.
 - **Extensión:** ver abajo.
 
+## Búsqueda unificada
+
+Escribe lo que buscas en el inicio. La app:
+- busca en el servidor donde se permite (hoy **Hites**; caché de 30 min, máx. 6 búsquedas/min por tienda);
+- muestra botones **Buscar en Falabella / Paris / Ripley / Lider / La Polar / Abcdin**: con la extensión,
+  los resultados que ves en esas tiendas se suman solos a la comparación (la página se actualiza sola);
+- agrupa el mismo producto entre tiendas (por EAN o marca + modelo + título, sin IA) y ordena por precio;
+- con **Seguir** eliges qué tiendas vigilar: queda un solo producto con todas ellas.
+
+Si abres la búsqueda de una tienda por tu cuenta, el panel de la extensión ofrece **Enviar resultados a Rastreador**.
+Prueba de la API: `pnpm --filter @rastreador/db exec tsx src/smoke-search.ts`.
+
+> **Antivirus con inspección HTTPS (Avast, etc.):** el servidor de desarrollo arranca con `--use-system-ca`
+> para confiar en los certificados de Windows. Sin eso, las búsquedas fallan con "unable to verify the first certificate".
+
 ## Alertas (Telegram y correo)
 
 Se avisa cuando un producto que sigues baja de tu precio objetivo, baja más de X %, llega a su mínimo
@@ -92,6 +107,19 @@ tiendas soportadas —también acortados o de afiliados— los sigue por ti y te
 `RESEND_API_KEY`. Sin dominio propio solo puede enviar al correo de tu cuenta de Resend.
 
 Pruebas sin enviar nada real: `pnpm --filter @rastreador/db exec tsx src/smoke-alerts.ts`.
+
+## Radar de ofertas (Telegram)
+
+Lee canales y grupos de Telegram y te avisa (por el bot o correo) cuando aparece:
+un link o una mención de algo que sigues, una de tus **palabras clave**, o un posible **error de precio**.
+Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nada se sigue sin tu clic).
+
+- **Canales públicos:** en **Radar** pega `@canal` o `t.me/canal`. Se leen desde su vista web pública
+  (`t.me/s/canal`), sin cuenta. Solo se avisan mensajes posteriores a tu suscripción.
+- **Grupos:** vincula Telegram, en @BotFather haz `/setprivacy` → tu bot → **Disable**, agrega el bot
+  al grupo y escribe `/radar` (y `/radar_off` para desactivarlo). Solo grupos que permiten bots.
+- **Frecuencia:** el workflow `Radar` corre cada hora (`pnpm radar:once`, liviano). En tu PC puedes
+  correrlo más seguido. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 
 ## Extensión de navegador (Falabella, Paris, Ripley, Lider)
 

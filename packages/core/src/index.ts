@@ -8,3 +8,5 @@ export * from "./structured";
 export * from "./adapters";
 export * from "./capture";
 export * from "./alerts";
+export * from "./search";
+export * from "./radar";

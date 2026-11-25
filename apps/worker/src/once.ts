@@ -1,5 +1,6 @@
 import { createDb, schema } from "@rastreador/db";
-import { deliverPendingAlerts } from "@rastreador/db/alerts";
+import { deliverPendingAlerts, httpTransport } from "@rastreador/db/alerts";
+import { notifyDealMatches, pollPublicChannels } from "@rastreador/db/radar";
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { eq, sql } from "drizzle-orm";
 import { env } from "./env";
@@ -24,12 +25,22 @@ async function main() {
         console.warn("Telegram no disponible:", (err as Error).message);
       }
     }
-    const delivery = await deliverPendingAlerts(db, {
+    const deliveryCfg = {
       appUrl: env.appUrl,
       telegramToken: env.telegramToken,
       resendApiKey: env.resendApiKey,
       resendFrom: env.resendFrom,
-    });
+    };
+    const delivery = await deliverPendingAlerts(db, deliveryCfg);
+
+    // Radar de ofertas: canales públicos de Telegram (los grupos llegan por el bot, arriba).
+    let radar = { channels: 0, newPosts: 0, errors: 0, notified: 0 };
+    try {
+      radar = { ...(await pollPublicChannels(db)), notified: 0 };
+      radar.notified = await notifyDealMatches(db, env.appUrl, httpTransport(deliveryCfg));
+    } catch (err) {
+      console.warn("Radar no disponible:", (err as Error).message);
+    }
     await db
       .update(schema.fetchRuns)
       .set({
@@ -37,7 +48,7 @@ async function main() {
         listingsChecked: summary.checked,
         snapshotsInserted: summary.snapshots,
         errors: summary.errors,
-        summary: { ...summary, bot, delivery },
+        summary: { ...summary, bot, delivery, radar },
       })
       .where(eq(schema.fetchRuns.id, run!.id));
 
@@ -47,7 +58,7 @@ async function main() {
         `${summary.snapshots} cambios, ${summary.errors} errores` +
         (summary.blockedStores.length ? `, bloqueadas: ${summary.blockedStores.join(", ")}` : ""),
     );
-    console.log(`  alertas: ${delivery.sent} enviadas, ${delivery.failed} fallidas · bot: ${bot.processed} mensajes`);
+    console.log(`  alertas: ${delivery.sent} enviadas, ${delivery.failed} fallidas · bot: ${bot.processed} mensajes · radar: ${radar.channels} canales, ${radar.newPosts} mensajes nuevos, ${radar.notified} avisos`);
     for (const [store, s] of Object.entries(summary.byStore)) console.log(`  ${store}: ${s.ok} ok, ${s.errors} errores`);
     await ping(summary.errors > 0 && summary.checked === 0 ? "fail" : "success", JSON.stringify(summary));
   } catch (err) {

@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "once": "tsx src/once.ts",
-    "check:store": "tsx src/check-store.ts",
-    "probe": "tsx src/probe.ts",
-    "smoke": "tsx src/smoke.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "once": "tsx --use-system-ca src/once.ts",
+    "check:store": "tsx --use-system-ca src/check-store.ts",
+    "probe": "tsx --use-system-ca src/probe.ts",
+    "smoke": "tsx --use-system-ca src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "radar:once": "tsx --use-system-ca src/radar-once.ts"
   },
   "dependencies": {
     "@rastreador/core": "workspace:*",

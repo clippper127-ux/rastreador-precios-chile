@@ -1,0 +1,36 @@
+name: Radar
+
+# Radar de ofertas de Telegram cada hora: lee canales públicos, mensajes del bot y avisa coincidencias.
+# Liviano (sin revisar tiendas): ~1 min por ejecución ≈ 720 min/mes, dentro de los 2.000 gratis del repo privado.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm radar:once
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM: ${{ vars.RESEND_FROM }}
+          APP_URL: ${{ vars.APP_URL }}
+          WORKER_USER_AGENT: ${{ vars.WORKER_USER_AGENT }}

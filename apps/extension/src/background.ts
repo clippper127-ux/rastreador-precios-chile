@@ -25,6 +25,13 @@ chrome.runtime.onMessage.addListener((msg: Msg, _sender, reply) => {
     call("/api/ingest", { method: "POST", body: JSON.stringify({ capture: msg.capture, follow: msg.follow }) }).then(reply);
     return true; // respuesta asíncrona
   }
+  if (msg.type === "searchCapture") {
+    call("/api/search-capture", {
+      method: "POST",
+      body: JSON.stringify({ pageUrl: msg.pageUrl, query: msg.query, results: msg.results }),
+    }).then(reply);
+    return true;
+  }
   if (msg.type === "ping") {
     call("/api/ingest", { method: "GET" }).then(reply);
     return true;

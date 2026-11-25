@@ -15,6 +15,7 @@ export async function getSettings(): Promise<Settings> {
 
 export type Msg =
   | { type: "capture"; capture: CapturedProduct; follow: boolean }
+  | { type: "searchCapture"; pageUrl: string; query?: string; results: CapturedProduct[] }
   | { type: "ping" };
 
 export interface IngestResponse {
@@ -28,4 +29,7 @@ export interface IngestResponse {
   /** Agregado por el background: dirección de la app para el link "Ver en Rastreador". */
   appUrl?: string;
   status?: number;
+  /** Respuesta de /api/search-capture. */
+  count?: number;
+  query?: string;
 }

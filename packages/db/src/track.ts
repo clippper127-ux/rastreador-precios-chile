@@ -34,15 +34,19 @@ export async function ensureTracked(
   userId: string,
   ref: ListingRef,
   hint?: Pick<CapturedProduct, "title" | "brand" | "imageUrl" | "ean">,
+  /** Para seguir un grupo de búsqueda: agrega esta tienda al producto ya creado. */
+  intoProductId?: string,
 ): Promise<{ productId: string; listingId: string }> {
   return db.transaction(async (tx) => {
     let listing = await tx.query.listings.findFirst({ where: eq(schema.listings.url, ref.url) });
     if (!listing) {
       const name = hint?.title ?? `Pendiente: ${slugTitle(ref.url, ref.storeName)}`;
-      const [product] = await tx
-        .insert(schema.products)
-        .values({ canonicalName: name, brand: hint?.brand ?? null, imageUrl: hint?.imageUrl ?? null })
-        .returning();
+      const [product] = intoProductId
+        ? [{ id: intoProductId }]
+        : await tx
+            .insert(schema.products)
+            .values({ canonicalName: name, brand: hint?.brand ?? null, imageUrl: hint?.imageUrl ?? null })
+            .returning();
       [listing] = await tx
         .insert(schema.listings)
         .values({
@@ -84,7 +88,7 @@ export async function recordCapture(
   db: Database,
   listingId: string,
   cap: CapturedProduct,
-  source: Extract<PriceSource, "extension" | "manual">,
+  source: Extract<PriceSource, "server" | "extension" | "manual">,
   userId: string,
 ): Promise<{ changed: boolean; snapshotId?: number }> {
   const listing = await db.query.listings.findFirst({ where: eq(schema.listings.id, listingId) });
@@ -120,7 +124,7 @@ export async function recordCapture(
       .update(schema.listings)
       .set({
         // El ingreso manual no trae título/imagen nuevos: conserva los actuales.
-        title: source === "extension" ? cap.title : listing.title,
+        title: source === "manual" ? listing.title : cap.title,
         imageUrl: cap.imageUrl ?? listing.imageUrl,
         externalId: cap.sku ?? listing.externalId,
         ean: cap.ean ?? listing.ean,
@@ -138,7 +142,7 @@ export async function recordCapture(
       })
       .where(eq(schema.listings.id, listingId));
 
-    if (source === "extension") {
+    if (source !== "manual") {
       await tx.execute(sql`
         update products set
           canonical_name = case when canonical_name like 'Pendiente:%' then ${cap.title} else canonical_name end,

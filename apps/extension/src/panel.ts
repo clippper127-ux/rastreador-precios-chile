@@ -178,3 +178,54 @@ export function renderPanel(props: PanelProps | null) {
     });
   }
 }
+
+export interface SearchPanelProps {
+  store: ExtensionStore;
+  count: number;
+  state: IngestResponse;
+  busy?: boolean;
+  onSend: () => void;
+}
+
+/** Panel en páginas de resultados: envía lo que estás viendo a la búsqueda unificada de la app. */
+export function renderSearchPanel(props: SearchPanelProps) {
+  lastProps = null;
+  if (!host) {
+    host = document.createElement("rastreador-precios-panel");
+    host.attachShadow({ mode: "open" });
+    document.documentElement.appendChild(host);
+  }
+  const root = host.shadowRoot!;
+  const { store, count, state, busy } = props;
+  let body: string;
+  if (busy) body = `<p class="muted">Enviando…</p>`;
+  else if (state.error)
+    body = `<p><span class="badge err">Error</span></p><p class="muted">${esc(ERRORS[state.error] ?? `No se pudo enviar (${state.error}).`)}</p>`;
+  else if (state.count != null)
+    body = `<p class="row"><span class="badge ok">✓ Enviado</span><span class="muted">${state.count} productos</span></p>
+      ${state.appUrl && state.query ? `<a href="${esc(state.appUrl)}/buscar?q=${encodeURIComponent(state.query)}" target="_blank" rel="noopener">Ver comparación en Rastreador →</a>` : ""}`;
+  else
+    body = `<button type="button" class="primary" data-act="send">Enviar ${count} resultados a Rastreador</button>
+      <p class="muted">Para compararlos con otras tiendas. Solo se envía esta lista.</p>`;
+
+  root.innerHTML = `<style>${CSS}</style>
+  <section class="wrap" role="region" aria-label="Rastreador de precios">
+    <header>
+      <span class="logo">${LOGO}</span>
+      <span class="title">Rastreador<small>${esc(store.name)} · ${count} productos en pantalla</small></span>
+      <button type="button" class="icon" data-act="close" aria-label="Cerrar panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="body">${body}</div>
+  </section>`;
+  root.querySelector('[data-act="close"]')?.addEventListener("click", () => {
+    host?.remove();
+    host = null;
+  });
+  const send = root.querySelector<HTMLButtonElement>('[data-act="send"]');
+  send?.addEventListener("click", () => {
+    send.disabled = true;
+    props.onSend();
+  });
+}

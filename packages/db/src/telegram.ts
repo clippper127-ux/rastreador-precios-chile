@@ -3,6 +3,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import type { Database } from "./client";
 import * as schema from "./schema";
+import { disableGroupRadar, enableGroupRadar, ingestGroupMessage } from "./radar";
 import { ensureTracked } from "./track";
 
 /*
@@ -66,7 +67,9 @@ interface TgEntity {
 }
 interface TgMessage {
   message_id: number;
-  chat: { id: number; type: string };
+  date?: number;
+  from?: { id: number };
+  chat: { id: number; type: string; title?: string };
   text?: string;
   caption?: string;
   entities?: TgEntity[];
@@ -132,6 +135,42 @@ async function handleLinks(db: Database, userId: string, urls: string[], appUrl:
 }
 
 /**
+ * Grupos y canales donde está el bot (radar de ofertas):
+ *   /radar      activa el radar en este grupo para quien lo escribe (debe tener su cuenta vinculada)
+ *   /radar_off  lo desactiva
+ *   otros mensajes → se guardan y se cruzan con lo que siguen los suscriptores
+ * Para que el bot vea TODOS los mensajes de un grupo: @BotFather → /setprivacy → Disable, y volver a agregarlo.
+ */
+async function handleGroupMessage(db: Database, token: string, msg: TgMessage) {
+  const text = (msg.text ?? msg.caption ?? "").trim();
+  const cmd = text.match(/^\/(radar_off|radar)(?:@\w+)?\b/i)?.[1]?.toLowerCase();
+  if (cmd) {
+    const owner = msg.from
+      ? await db.query.profiles.findFirst({ where: eq(schema.profiles.telegramChatId, msg.from.id), columns: { id: true } })
+      : undefined;
+    if (!owner) {
+      await sendTelegram(token, msg.chat.id, "Para usar el radar aquí, primero vincula tu cuenta: escríbeme por privado o ve a Ajustes → Telegram.");
+      return;
+    }
+    if (cmd === "radar") {
+      await enableGroupRadar(db, owner.id, msg.chat.id, msg.chat.title ?? "Grupo");
+      await sendTelegram(token, msg.chat.id, "📡 Radar activado: te avisaré por privado cuando aquí aparezcan ofertas de lo que sigues o de tus palabras clave.");
+    } else {
+      await disableGroupRadar(db, owner.id, msg.chat.id);
+      await sendTelegram(token, msg.chat.id, "Radar desactivado en este grupo.");
+    }
+    return;
+  }
+  if (!text && !msg.entities?.length && !msg.caption_entities?.length) return;
+  await ingestGroupMessage(db, msg.chat.id, {
+    id: msg.message_id,
+    postedAt: msg.date ? new Date(msg.date * 1000) : new Date(),
+    text: text.slice(0, 4000),
+    links: urlsInMessage(msg),
+  });
+}
+
+/**
  * Lee mensajes nuevos del bot y los procesa. Seguro de llamar desde varios lugares:
  * el offset se guarda en bot_state y Telegram no repite updates confirmados.
  */
@@ -140,17 +179,25 @@ export async function processTelegramUpdates(
   cfg: { token: string; appUrl: string },
 ): Promise<{ processed: number; linked: number; tracked: number }> {
   const [state] = await db.select().from(schema.botState).where(eq(schema.botState.id, "telegram"));
-  const updates = await tg<{ update_id: number; message?: TgMessage }[]>(cfg.token, "getUpdates", {
+  const updates = await tg<{ update_id: number; message?: TgMessage; channel_post?: TgMessage }[]>(cfg.token, "getUpdates", {
     offset: (state?.lastUpdateId ?? 0) + 1,
     timeout: 0,
-    allowed_updates: ["message"],
+    allowed_updates: ["message", "channel_post"],
   });
 
   let linked = 0;
   let tracked = 0;
   for (const u of updates) {
-    const msg = u.message;
-    if (!msg || msg.chat.type !== "private") continue; // solo chats privados con el bot
+    const msg = u.message ?? u.channel_post;
+    if (!msg) continue;
+    if (msg.chat.type !== "private") {
+      try {
+        await handleGroupMessage(db, cfg.token, msg);
+      } catch (err) {
+        console.warn("Telegram: error en mensaje de grupo:", (err as Error).message);
+      }
+      continue;
+    }
     const chatId = msg.chat.id;
     const text = (msg.text ?? "").trim();
 

@@ -120,3 +120,39 @@ export async function deleteExtensionToken(): Promise<void> {
   await revokeExtensionToken(db(), user.id);
   revalidatePath("/configuracion");
 }
+
+export interface FollowItem {
+  url: string;
+  title: string;
+  brand?: string;
+  imageUrl?: string;
+  priceNormal?: number;
+  priceOffer?: number;
+  priceCard?: number;
+  cardName?: string;
+  stockStatus?: string;
+  seller?: string;
+  sellerType?: string;
+}
+
+/**
+ * Seguir un grupo de la búsqueda: UN producto con las tiendas que elegiste.
+ * El precio del listado queda como primer punto del historial (se confirma en la próxima revisión o visita).
+ */
+export async function followGroup(items: FollowItem[]): Promise<TrackResult> {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/buscar");
+  const d = db();
+  let productId: string | undefined;
+  for (const it of items.slice(0, 10)) {
+    const parsed = parseListingUrl(it.url);
+    if (!parsed.ok) continue;
+    const cap = sanitizeCapture({ ...it, url: parsed.url, stockStatus: it.stockStatus ?? "unknown" });
+    const ids = await ensureTracked(d, user.id, parsed, cap ?? { title: it.title }, productId);
+    productId ??= ids.productId;
+    if (cap) await recordCapture(d, ids.listingId, cap, parsed.mode === "server" ? "server" : "extension", user.id);
+  }
+  if (!productId) return { error: "No pudimos seguir esas publicaciones." };
+  revalidatePath("/seguimientos");
+  redirect(`/producto/${productId}?nuevo=1`);
+}

@@ -74,6 +74,9 @@ export const profiles = pgTable("profiles", {
   /** Código de un solo uso para vincular Telegram (/start <código>), con vencimiento. */
   telegramLinkCode: text("telegram_link_code"),
   telegramLinkExpiresAt: ts("telegram_link_expires_at"),
+  /** Radar de ofertas: palabras a vigilar en canales/grupos y si avisar "errores de precio". */
+  radarKeywords: text("radar_keywords").array().notNull().default(sql`'{}'::text[]`),
+  radarPriceErrors: boolean("radar_price_errors").notNull().default(true),
   emailAlerts: boolean("email_alerts").notNull().default(true),
   weeklyDigest: boolean("weekly_digest").notNull().default(false),
   /** Hash SHA-256 del token de la extensión; el token en claro solo se muestra una vez. */
@@ -319,3 +322,88 @@ export const botState = pgTable("bot_state", {
   lastUpdateId: bigint("last_update_id", { mode: "number" }).notNull().default(0),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
+
+/** Resultados de búsqueda que la extensión capturó en una tienda (se muestran en /buscar ~2 h). */
+export const searchCaptures = pgTable(
+  "search_captures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull(),
+    /** Consulta normalizada (tokens unidos por espacio) para emparejar con /buscar?q=. */
+    queryKey: text("query_key").notNull(),
+    storeId: text("store_id")
+      .notNull()
+      .references(() => stores.id),
+    results: jsonb("results").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("search_captures_user_query_idx").on(t.userId, t.queryKey, t.createdAt.desc())],
+);
+
+// ─── Radar de ofertas (Telegram) ─────────────────────────────────────────────
+
+export const dealSourceKindEnum = pgEnum("deal_source_kind", ["channel", "group"]);
+
+/** Canal público (id "c:<handle>") o grupo con el bot (id "g:<chat_id>"). Compartido entre usuarios. */
+export const dealChannels = pgTable("deal_channels", {
+  id: text("id").primaryKey(),
+  kind: dealSourceKindEnum("kind").notNull(),
+  handle: text("handle"),
+  chatId: bigint("chat_id", { mode: "number" }),
+  title: text("title"),
+  lastPostId: bigint("last_post_id", { mode: "number" }).notNull().default(0),
+  lastCheckedAt: ts("last_checked_at"),
+  lastError: text("last_error"),
+  createdAt: createdAt(),
+});
+
+export const dealSubscriptions = pgTable(
+  "deal_subscriptions",
+  {
+    userId: uuid("user_id").notNull(),
+    channelId: text("channel_id")
+      .notNull()
+      .references(() => dealChannels.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.channelId] })],
+);
+
+export const dealPosts = pgTable(
+  "deal_posts",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    channelId: text("channel_id")
+      .notNull()
+      .references(() => dealChannels.id, { onDelete: "cascade" }),
+    externalId: bigint("external_id", { mode: "number" }).notNull(),
+    postedAt: ts("posted_at").notNull(),
+    text: text("text").notNull(),
+    /** Fichas de tiendas soportadas encontradas en el mensaje: [{url, storeId, storeName}]. */
+    storeLinks: jsonb("store_links").notNull().default(sql`'[]'::jsonb`),
+    prices: integer("prices").array().notNull().default(sql`'{}'::integer[]`),
+    discountPct: integer("discount_pct"),
+    flags: text("flags").array().notNull().default(sql`'{}'::text[]`),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("deal_posts_channel_ext_uq").on(t.channelId, t.externalId),
+    index("deal_posts_posted_idx").on(t.postedAt.desc()),
+  ],
+);
+
+export const dealMatches = pgTable(
+  "deal_matches",
+  {
+    userId: uuid("user_id").notNull(),
+    postId: bigint("post_id", { mode: "number" })
+      .notNull()
+      .references(() => dealPosts.id, { onDelete: "cascade" }),
+    reasons: text("reasons").array().notNull(),
+    productIds: uuid("product_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    notifiedAt: ts("notified_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.postId] }), index("deal_matches_user_idx").on(t.userId, t.createdAt.desc())],
+);

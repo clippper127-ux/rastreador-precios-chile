@@ -8,7 +8,8 @@
     "./schema": "./src/schema.ts",
     "./track": "./src/track.ts",
     "./alerts": "./src/alerts.ts",
-    "./telegram": "./src/telegram.ts"
+    "./telegram": "./src/telegram.ts",
+    "./radar": "./src/radar.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

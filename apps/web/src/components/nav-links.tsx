@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LayoutGrid, Search, Settings } from "lucide-react";
+import { Bell, LayoutGrid, Radio, Search, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", label: "Buscar", icon: Search },
   { href: "/seguimientos", label: "Seguimientos", icon: LayoutGrid },
+  { href: "/radar", label: "Radar", icon: Radio },
   { href: "/alertas", label: "Alertas", icon: Bell },
   { href: "/configuracion", label: "Ajustes", icon: Settings },
 ] as const;
@@ -57,7 +58,7 @@ export function MobileNav() {
       aria-label="Principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
