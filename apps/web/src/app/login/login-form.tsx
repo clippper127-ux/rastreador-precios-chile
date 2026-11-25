@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Mail, MailCheck } from "lucide-react";
+import { KeyRound, Loader2, Mail, MailCheck } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ export function LoginForm({
   googleEnabled: boolean;
 }) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"password" | "link">("password");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +44,25 @@ export function LoginForm({
     } else {
       setStatus("sent");
     }
+  }
+
+  async function signInWithPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("sending");
+    setError(null);
+    const { error } = await createClient().auth.signInWithPassword({ email, password });
+    if (error) {
+      setStatus("error");
+      setError(
+        /invalid login credentials/i.test(error.message)
+          ? "Correo o contraseña incorrectos. Si todavía no creaste una contraseña, entra con un link y créala en Ajustes."
+          : error.message,
+      );
+      return;
+    }
+    // La sesión queda guardada en este navegador (hasta 400 días o hasta que cierres sesión).
+    const safe = next.startsWith("/") && !next.startsWith("//") ? next : "/seguimientos";
+    window.location.assign(safe);
   }
 
   async function signInWithGoogle() {
@@ -95,24 +116,63 @@ export function LoginForm({
         </>
       )}
 
-      <form onSubmit={sendMagicLink} className="flex flex-col gap-3">
-        <Label htmlFor="email">Correo</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="tu@correo.cl"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          aria-invalid={status === "error" || undefined}
-          aria-describedby={error ? "login-error" : undefined}
-        />
-        <Button type="submit" size="lg" disabled={status === "sending"}>
-          {status === "sending" ? <Loader2 className="animate-spin" aria-hidden /> : <Mail aria-hidden />}
-          Enviarme un link de acceso
-        </Button>
-      </form>
+      {mode === "password" ? (
+        <form onSubmit={signInWithPassword} className="flex flex-col gap-3">
+          <Label htmlFor="email">Correo</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="tu@correo.cl"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={status === "error" || undefined}
+            aria-describedby={error ? "login-error" : undefined}
+          />
+          <Label htmlFor="password">Contraseña</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={status === "error" || undefined}
+            aria-describedby={error ? "login-error" : undefined}
+          />
+          <Button type="submit" size="lg" disabled={status === "sending"}>
+            {status === "sending" ? <Loader2 className="animate-spin" aria-hidden /> : <KeyRound aria-hidden />}
+            Entrar
+          </Button>
+          <Button type="button" variant="link" onClick={() => { setMode("link"); setError(null); }}>
+            ¿Sin contraseña? Entra con un link a tu correo
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={sendMagicLink} className="flex flex-col gap-3">
+          <Label htmlFor="email">Correo</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="tu@correo.cl"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={status === "error" || undefined}
+            aria-describedby={error ? "login-error" : undefined}
+          />
+          <Button type="submit" size="lg" disabled={status === "sending"}>
+            {status === "sending" ? <Loader2 className="animate-spin" aria-hidden /> : <Mail aria-hidden />}
+            Enviarme un link de acceso
+          </Button>
+          <p className="text-xs text-muted-foreground">Después crea una contraseña en Ajustes para no depender del correo.</p>
+          <Button type="button" variant="link" onClick={() => { setMode("password"); setError(null); }}>
+            Entrar con contraseña
+          </Button>
+        </form>
+      )}
 
       {error && (
         <p id="login-error" role="alert" className="text-sm text-danger">

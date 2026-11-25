@@ -153,7 +153,7 @@ precios de productos que alguien sigue.
 1. Compílala: `pnpm --filter @rastreador/extension build` (queda en `apps/extension/dist`).
 2. En Chrome abre `chrome://extensions`, activa **Modo de desarrollador** → **Cargar descomprimida** → elige `apps/extension/dist`.
 3. En la app: **Ajustes → Extensión de navegador → Conectar extensión** y copia el token.
-4. Haz clic en el ícono de la extensión, pega el token (y la dirección de la app, por defecto `http://localhost:3000`) → **Guardar y probar**.
+4. Haz clic en el ícono de la extensión, pega el token (la dirección de la app ya viene puesta: `https://rastreador-precios-chile.vercel.app`; para desarrollo usa `http://localhost:3000`) → **Guardar y probar**.
 5. Abre una ficha de producto: aparece un panel abajo a la derecha con el precio leído y el botón **Seguir precio**.
    Si ya la sigues, el precio se guarda solo en cada visita.
 

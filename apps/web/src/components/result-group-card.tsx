@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCLP, type ResultGroup } from "@rastreador/core";
+import { formatCLP, measureLabel, type ResultGroup } from "@rastreador/core";
 import { CreditCard, ExternalLink, Loader2, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { followGroup } from "@/app/actions";
@@ -50,6 +50,15 @@ export function ResultGroupCard({ group, storeNames }: { group: ResultGroup; sto
         <div className="min-w-0 flex-1">
           {group.brand && <p className="text-xs tracking-wide text-muted-foreground uppercase">{group.brand}</p>}
           <h2 className="line-clamp-2 leading-snug font-medium">{group.title}</h2>
+          {group.variant.length > 0 && (
+            <p className="mt-1.5 flex flex-wrap gap-1" aria-label="Versión">
+              {group.variant.map((v) => (
+                <Badge key={v} variant="outline" className="tabular">
+                  {measureLabel(v)}
+                </Badge>
+              ))}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="tabular text-xl font-semibold tracking-tight">
               {group.bestNoCard != null ? `desde ${formatCLP(group.bestNoCard)}` : "Sin stock"}

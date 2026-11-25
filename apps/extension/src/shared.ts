@@ -6,7 +6,7 @@ export interface Settings {
   collapsed?: boolean;
 }
 
-export const DEFAULT_API = "http://localhost:3000";
+export const DEFAULT_API = "https://rastreador-precios-chile.vercel.app";
 
 export async function getSettings(): Promise<Settings> {
   const s = (await chrome.storage.local.get(["apiUrl", "token", "collapsed"])) as Partial<Settings>;

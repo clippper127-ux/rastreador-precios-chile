@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseSfccSearch } from "./adapters/sfcc";
-import { groupResults, isValidEan, matchesQuery, parseQuery, relevance, sameProduct, tokenize } from "./search";
+import { groupResults, isValidEan, matchesQuery, measureLabel, parseQuery, relevance, sameProduct, tokenize, variantChoices, variantOf } from "./search";
 import type { SearchResult } from "./types";
 
 const r = (storeId: string, title: string, price: number, extra: Partial<SearchResult> = {}): SearchResult => ({
@@ -144,5 +144,52 @@ describe("búsqueda exacta (consola ps5, 2026-11-25)", () => {
     ];
     expect(groupResults(rs, q).map((g) => g.title)).toEqual(["Consola PlayStation 5 Slim"]);
     expect(groupResults(rs, q, { loose: true })).toHaveLength(2);
+  });
+});
+
+describe("medidas y versiones", () => {
+  it("normaliza unidades escritas de distintas formas", () => {
+    expect(variantOf("Nutella 400 gr")).toEqual(["400g"]);
+    expect(variantOf("Nutella 0,4 Kg")).toEqual(["400g"]);
+    expect(variantOf("Coca-Cola 1,5 Lt")).toEqual(["1500ml"]);
+    expect(variantOf("Bebida 1500 cc")).toEqual(["1500ml"]);
+    expect(variantOf("Disco SSD 1TB")).toEqual(["1000gb"]);
+    expect(variantOf("Consola PS5 Edición Digital 825 GB")).toEqual(["825gb"]);
+    expect(variantOf('Smart TV Samsung 55" Crystal')).toEqual(["55pulg"]);
+    expect(variantOf("Televisor LG 65 pulgadas")).toEqual(["65pulg"]);
+    expect(variantOf("Cerveza pack 6 latas")).toEqual(["6un"]);
+    expect(variantOf("Samsung Galaxy A55 5G 8GB 256GB")).toEqual(["8gb", "256gb"]);
+  });
+  it("etiquetas legibles", () => {
+    expect(["400g", "1000g", "1500ml", "250ml", "1000gb", "825gb", "55pulg", "6un"].map(measureLabel)).toEqual([
+      "400 g", "1 kg", "1,5 L", "250 ml", "1 TB", "825 GB", '55"', "6 un.",
+    ]);
+  });
+  it("si escribes la versión, solo esa (1 kg = 1000 g; 200 g no es 1200 g)", () => {
+    const q = parseQuery("nutella 1 kg");
+    expect(matchesQuery(q, "Crema Nutella 1000 g")).toBe(true);
+    expect(matchesQuery(q, "Crema Nutella 750 g")).toBe(false);
+    expect(matchesQuery(parseQuery("nutella 200g"), "Nutella 1200 g")).toBe(false);
+    expect(matchesQuery(parseQuery("nutella 200g"), "Crema Nutella 200 gr")).toBe(true);
+  });
+  it("no agrupa versiones distintas entre tiendas", () => {
+    const a = { storeId: "jumbo", url: "https://a/1", title: "Nutella 200 g", brand: "Nutella", stockStatus: "in_stock" as const };
+    expect(sameProduct(a, { ...a, storeId: "santa-isabel", url: "https://b/1", title: "Crema Nutella 0,2 kg" })).toBe(true);
+    expect(sameProduct(a, { ...a, storeId: "santa-isabel", url: "https://b/2", title: "Crema Nutella 350 g" })).toBe(false);
+  });
+});
+
+describe("elige la versión", () => {
+  const r = (title: string, n: number) => ({ storeId: "jumbo", url: `https://a/${n}`, title, stockStatus: "in_stock" as const });
+  const rs = [r("Nutella 200 g", 1), r("Nutella 350 gr", 2), r("Nutella 1 kg", 3), r("Nutella Go 52 g", 4)];
+  it("ofrece las versiones encontradas, de menor a mayor", () => {
+    const q = parseQuery("nutella");
+    expect(variantChoices(groupResults(rs, q), q).map((c) => c.label)).toEqual(["52 g", "200 g", "350 g", "1 kg"]);
+  });
+  it("al elegir una, solo esa y ya no se ofrecen chips", () => {
+    const q = parseQuery("nutella 1 kg");
+    const g = groupResults(rs, q);
+    expect(g.map((x) => x.title)).toEqual(["Nutella 1 kg"]);
+    expect(variantChoices(g, q)).toEqual([]);
   });
 });

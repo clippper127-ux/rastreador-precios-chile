@@ -1,4 +1,4 @@
-import { EXTENSION_STORES, eanFromQuery, groupResults, type SearchResult } from "@rastreador/core";
+import { EXTENSION_STORES, eanFromQuery, groupResults, variantChoices, type SearchResult } from "@rastreador/core";
 import { schema } from "@rastreador/db";
 import { Barcode, SearchX } from "lucide-react";
 import type { Metadata } from "next";
@@ -101,6 +101,7 @@ async function Results({
   // Cuántos productos parecidos (accesorios, juegos, otras palabras) quedaron fuera de la búsqueda exacta.
   const hidden = loose ? 0 : groupResults(all, q, { loose: true }).length - groups.length;
   const base = `/buscar?q=${encodeURIComponent(q.raw)}`;
+  const choices = variantChoices(groups, q);
   const issues = server.filter((s) => s.status === "limited" || s.status === "error" || s.status === "blocked");
 
   return (
@@ -128,6 +129,21 @@ async function Results({
             Solo exactos
           </Link>
         </p>
+      )}
+      {choices.length > 0 && (
+        <nav aria-label="Elige la versión" className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">Elige la versión:</span>
+          {choices.map((c) => (
+            <Link
+              key={c.token}
+              href={`/buscar?q=${encodeURIComponent(`${q.raw} ${c.label.replace(/\.$/, "")}`)}${loose ? "&todo=1" : ""}`}
+              className="tabular inline-flex h-9 items-center gap-1.5 rounded-full border bg-card px-3 text-sm hover:border-brand hover:text-brand"
+            >
+              {c.label}
+              <span className="text-xs text-muted-foreground">{c.count}</span>
+            </Link>
+          ))}
+        </nav>
       )}
       {!groups.length ? (
         <EmptyState

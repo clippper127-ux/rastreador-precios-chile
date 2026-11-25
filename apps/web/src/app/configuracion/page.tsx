@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { ExtensionTokenCard } from "@/components/extension-token-card";
 import { NotificationSettings } from "@/components/notification-settings";
 import { PageHeader } from "@/components/page-header";
+import { PasswordForm } from "@/components/password-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +47,18 @@ export default async function ConfiguracionPage() {
                 Cerrar sesión
               </Button>
             </form>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Contraseña</CardTitle>
+            <CardDescription>
+              Cada navegador (Chrome, el celular, otro PC) guarda su propia sesión. Con una contraseña entras al tiro en
+              cualquiera, sin esperar un correo. Tu navegador puede recordarla.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PasswordForm />
           </CardContent>
         </Card>
         <Link

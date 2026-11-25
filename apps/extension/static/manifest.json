@@ -20,6 +20,7 @@
     "storage"
   ],
   "host_permissions": [
+    "https://rastreador-precios-chile.vercel.app/*",
     "http://localhost:3000/*"
   ],
   "optional_host_permissions": [

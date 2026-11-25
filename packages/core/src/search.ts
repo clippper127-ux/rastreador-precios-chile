@@ -28,12 +28,89 @@ export function tokenize(s: string): string[] {
     .replace(/\b([a-z]{1,4})-([a-z]{0,4}\d\w*)\b/g, "$1$2")
     // y con espacio cuando sigue un número: "wh 1000xm5", "ps 5"
     .replace(/\b([a-z]{1,4})\s(\d\w*)\b/g, "$1$2")
-    .replace(/(\d+)\s*(gb|tb|mb|w|hz|mah|l|ml|kg|g|cm|mm|pulgadas|")/g, "$1$2");
-  return folded
-    .split(/[^a-z0-9"]+/)
+  ;
+  return normalizeMeasures(folded)
+    .split(/[^a-z0-9]+/)
     .map((t) => (t.length > 4 && t.endsWith("es") && !/\d/.test(t) ? t.slice(0, -2) : t.length > 3 && t.endsWith("s") && !/\d/.test(t) ? t.slice(0, -1) : t))
     .map((t) => SYNONYMS[t] ?? t)
     .filter((t) => t.length > 1 && !STOPWORDS.has(t));
+}
+
+/*
+ * Medidas: cada tienda las escribe distinto ("400 gr", "0,4 kg", "1TB", "1000 GB", "55''", "55 pulgadas", "pack 6").
+ * Se llevan a una unidad base para que la versión se compare bien: g, ml, gb, pulg, un (y w, hz, mah, cm, mm, mb).
+ */
+const UNIT: [RegExp, string, number][] = [
+  [/^(kilos?|kgs?)$/, "g", 1000],
+  [/^(gramos?|grs?|g)$/, "g", 1],
+  [/^(litros?|lts?|l)$/, "ml", 1000],
+  [/^(ml|cc|mls)$/, "ml", 1],
+  [/^tb$/, "gb", 1000],
+  [/^gb$/, "gb", 1],
+  [/^mb$/, "mb", 1],
+  [/^(pulgadas?|pulg|''|"|”)$/, "pulg", 1],
+  [/^(unidades?|unid|un|uds?)$/, "un", 1],
+  [/^(mah|w|hz|cm|mm)$/, "", 1],
+];
+
+const MEASURE_RE =
+  /(\d+(?:[.,]\d+)?)\s*(kilos?|kgs?|gramos?|grs?|g|litros?|lts?|l|mls|ml|cc|tb|gb|mb|pulgadas?|pulg|''|"|”|unidades?|unid|un|uds?|mah|w|hz|cm|mm)(?![a-z0-9])/g;
+
+export function normalizeMeasures(folded: string): string {
+  return folded
+    .replace(/(?<![a-z])pack\s?(?:de\s)?(\d+)(?![a-z0-9])/g, " $1un ")
+    .replace(/(?<![a-z0-9.,])(\d+)\s?pack(?![a-z])/g, " $1un ")
+    .replace(MEASURE_RE, (all, num: string, unit: string) => {
+      const rule = UNIT.find(([re]) => re.test(unit));
+      if (!rule) return all;
+      const n = Number(num.replace(",", ".")) * rule[2];
+      if (!Number.isFinite(n)) return all;
+      const value = Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10).replace(".", "_");
+      return ` ${value}${rule[1] || unit} `;
+    });
+}
+
+/** Tokens de medida normalizados ("200g", "1000gb", "55pulg", "6un"). */
+export function isMeasureToken(t: string): boolean {
+  return /^\d+(?:_\d+)?(g|ml|gb|mb|pulg|un|mah|w|hz|cm|mm)$/.test(t);
+}
+
+function fmtNum(n: number): string {
+  return n.toLocaleString("es-CL", { maximumFractionDigits: 1 });
+}
+
+/** Etiqueta legible de una medida normalizada: "1000g" → "1 kg", "1500ml" → "1,5 L", "1000gb" → "1 TB", "55pulg" → '55"'. */
+export function measureLabel(t: string): string {
+  const m = t.match(/^(\d+)(?:_(\d+))?([a-z]+)$/);
+  if (!m) return t;
+  const n = Number(`${m[1]}${m[2] ? `.${m[2]}` : ""}`);
+  switch (m[3]) {
+    case "g":
+      return n >= 1000 ? `${fmtNum(n / 1000)} kg` : `${fmtNum(n)} g`;
+    case "ml":
+      return n >= 1000 ? `${fmtNum(n / 1000)} L` : `${fmtNum(n)} ml`;
+    case "gb":
+      return n >= 1000 && n % 1000 === 0 ? `${fmtNum(n / 1000)} TB` : `${fmtNum(n)} GB`;
+    case "pulg":
+      return `${fmtNum(n)}"`;
+    case "un":
+      return `${fmtNum(n)} un.`;
+    default:
+      return `${fmtNum(n)} ${m[3] === "mah" ? "mAh" : m[3]}`;
+  }
+}
+
+/**
+ * La "versión" de un producto según su título: tamaño, peso, capacidad, pulgadas, unidades.
+ * Ignora "4G"/"5G" (redes de celulares, no gramos). Devuelve tokens normalizados en orden.
+ */
+export function variantOf(title: string): string[] {
+  const out: string[] = [];
+  for (const t of tokenize(title)) {
+    if (!isMeasureToken(t) || /^[345]g$/.test(t) || out.includes(t)) continue;
+    if (/(g|ml|gb|pulg|un)$/.test(t)) out.push(t);
+  }
+  return out;
 }
 
 /** Palabras que las tiendas escriben de varias formas (ya sin tildes y en singular). */
@@ -69,7 +146,7 @@ export function relevance(query: ParsedQuery, title: string): number {
   if (!query.tokens.length) return 0;
   const t = new Set(tokenize(title));
   const joined = [...t].join(" ");
-  if (query.models.some((m) => !t.has(m) && !joined.includes(m))) return 0;
+  if (query.models.some((m) => !t.has(m) && (isMeasureToken(m) || !joined.includes(m)))) return 0;
   const hits = query.tokens.filter((q) => t.has(q) || [...t].some((x) => x.startsWith(q) || q.startsWith(x))).length;
   return hits / query.tokens.length;
 }
@@ -96,7 +173,7 @@ export function matchesQuery(query: ParsedQuery, title: string, brand?: string):
   const words = tokenize(`${title} ${brand ?? ""}`);
   const set = new Set(words);
   const joined = words.join(" ");
-  if (query.models.some((m) => !set.has(m) && !joined.includes(m))) return false;
+  if (query.models.some((m) => !set.has(m) && (isMeasureToken(m) || !joined.includes(m)))) return false;
   const hit = (q: string) => words.findIndex((x) => x === q || x.startsWith(q) || (q.startsWith(x) && x.length >= 3));
   const positions = query.tokens.map(hit);
   const missing = positions.filter((p) => p < 0).length;
@@ -161,6 +238,8 @@ export interface ResultGroup {
   bestNoCard?: CLP;
   bestWithCard?: CLP;
   relevance: number;
+  /** Versión según el título: medidas normalizadas ("200g", "1000gb", "55pulg"). Ver measureLabel. */
+  variant: string[];
 }
 
 /**
@@ -183,7 +262,7 @@ export function groupResults(results: SearchResult[], query?: ParsedQuery, opts:
       g.items.push(item);
       g.relevance = Math.max(g.relevance, rel);
     } else {
-      groups.push({ key: r.ean ?? `${r.storeId}:${r.url}`, title: r.title, brand: r.brand, imageUrl: r.imageUrl, items: [item], relevance: rel });
+      groups.push({ key: r.ean ?? `${r.storeId}:${r.url}`, title: r.title, brand: r.brand, imageUrl: r.imageUrl, items: [item], relevance: rel, variant: [] });
     }
   }
   for (const g of groups) {
@@ -196,6 +275,7 @@ export function groupResults(results: SearchResult[], query?: ParsedQuery, opts:
     g.imageUrl ??= g.items.find((i) => i.imageUrl)?.imageUrl;
     // El título más descriptivo del grupo.
     g.title = g.items.map((i) => i.title).sort((a, b) => b.length - a.length)[0] ?? g.title;
+    g.variant = variantOf(g.title);
   }
   return groups.sort((a, b) => b.relevance - a.relevance || b.items.length - a.items.length || (a.bestNoCard ?? Infinity) - (b.bestNoCard ?? Infinity));
 }
@@ -226,6 +306,23 @@ export function isValidEan(code: string): boolean {
 }
 
 /** Si la consulta es solo un código de barras, lo devuelve. */
+/**
+ * Versiones distintas entre los resultados (para "Elige la versión"), solo si la consulta no trae ya una medida.
+ * Devuelve [{ token, label, count }] ordenado de menor a mayor dentro de cada unidad.
+ */
+export function variantChoices(groups: ResultGroup[], query: ParsedQuery): { token: string; label: string; count: number }[] {
+  if (query.tokens.some(isMeasureToken)) return [];
+  const counts = new Map<string, number>();
+  for (const g of groups) for (const t of g.variant) counts.set(t, (counts.get(t) ?? 0) + 1);
+  if (counts.size < 2) return [];
+  const unit = (t: string) => t.replace(/^[\d_]+/, "");
+  const num = (t: string) => Number(t.match(/^\d+/)?.[0] ?? 0);
+  return [...counts]
+    .map(([token, count]) => ({ token, label: measureLabel(token), count }))
+    .sort((a, b) => unit(a.token).localeCompare(unit(b.token)) || num(a.token) - num(b.token))
+    .slice(0, 12);
+}
+
 export function eanFromQuery(q: ParsedQuery): string | undefined {
   const raw = q.raw.replace(/\s+/g, "");
   return isValidEan(raw) ? raw : undefined;
