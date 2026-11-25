@@ -4,6 +4,7 @@ import { and, asc, eq, gte } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { userIdFromToken } from "@/lib/extension-token";
+import { deliverSoon } from "@/lib/notify";
 import { ensureTracked, recordCapture, takeRateLimit, userFollowsListing } from "@/lib/track";
 
 /**
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
     followed = true;
   }
   const { changed } = await recordCapture(d, listing!.id, capture, "extension", userId);
+  if (changed) deliverSoon();
 
   // Resumen para el panel: últimos 90 días del listing.
   const since = new Date(Date.now() - 90 * 86_400_000);

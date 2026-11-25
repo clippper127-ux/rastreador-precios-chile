@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema.ts",
+    "./track": "./src/track.ts",
+    "./alerts": "./src/alerts.ts",
+    "./telegram": "./src/telegram.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
@@ -17,7 +20,8 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.0",
+    "@rastreador/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

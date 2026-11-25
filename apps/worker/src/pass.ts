@@ -7,6 +7,7 @@ import {
   type StockStatus,
 } from "@rastreador/core";
 import { schema, type Database } from "@rastreador/db";
+import { queueAlertsForSnapshot } from "@rastreador/db/alerts";
 import { eq, sql } from "drizzle-orm";
 import { politeFetch } from "./http";
 
@@ -94,9 +95,10 @@ async function saveResult(db: Database, listing: Listing, store: Store, snap: Pr
   const changed = neverChecked || hasPriceStateChanged(prev, snap);
   const now = new Date();
 
+  let snapshotId: number | undefined;
   await db.transaction(async (tx) => {
     if (changed) {
-      await tx.insert(schema.priceSnapshots).values({
+      const [row] = await tx.insert(schema.priceSnapshots).values({
         listingId: listing.id,
         observedAt: now,
         priceNormal: snap.priceNormal ?? null,
@@ -105,7 +107,8 @@ async function saveResult(db: Database, listing: Listing, store: Store, snap: Pr
         cardName: snap.cardName ?? null,
         stockStatus: snap.stockStatus,
         source: snap.source,
-      });
+      }).returning({ id: schema.priceSnapshots.id });
+      snapshotId = row?.id;
     }
     await tx
       .update(schema.listings)
@@ -143,6 +146,16 @@ async function saveResult(db: Database, listing: Listing, store: Store, snap: Pr
         and (${snap.ean ?? null}::text is null or not exists (select 1 from products p2 where p2.ean = ${snap.ean ?? null} and p2.id <> ${listing.productId}))
     `);
   });
+
+  if (snapshotId != null) {
+    await queueAlertsForSnapshot(db, {
+      listingId: listing.id,
+      snapshotId,
+      prev: neverChecked ? null : prev,
+      next: snap,
+      sellerType: snap.sellerType ?? listing.sellerType,
+    });
+  }
   return changed;
 }
 

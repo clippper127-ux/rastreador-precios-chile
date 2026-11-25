@@ -71,6 +71,9 @@ export const profiles = pgTable("profiles", {
   comuna: text("comuna"),
   timezone: text("timezone").notNull().default("America/Santiago"),
   telegramChatId: bigint("telegram_chat_id", { mode: "number" }),
+  /** Código de un solo uso para vincular Telegram (/start <código>), con vencimiento. */
+  telegramLinkCode: text("telegram_link_code"),
+  telegramLinkExpiresAt: ts("telegram_link_expires_at"),
   emailAlerts: boolean("email_alerts").notNull().default(true),
   weeklyDigest: boolean("weekly_digest").notNull().default(false),
   /** Hash SHA-256 del token de la extensión; el token en claro solo se muestra una vez. */
@@ -309,3 +312,10 @@ export const alerts = pgTable(
     index("alerts_user_idx").on(t.userId, t.createdAt.desc()),
   ],
 );
+
+/** Estado del bot de Telegram (último update leído con getUpdates). Una sola fila: id = 'telegram'. */
+export const botState = pgTable("bot_state", {
+  id: text("id").primaryKey(),
+  lastUpdateId: bigint("last_update_id", { mode: "number" }).notNull().default(0),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});

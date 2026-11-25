@@ -7,3 +7,4 @@ export * from "./robots";
 export * from "./structured";
 export * from "./adapters";
 export * from "./capture";
+export * from "./alerts";

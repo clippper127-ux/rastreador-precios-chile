@@ -1,17 +1,16 @@
 import { EXTENSION_STORES, formatCLP, MIN_COVERAGE_DAYS_FOR_VERDICT } from "@rastreador/core";
-import { ArrowLeft, Clock, ExternalLink, Info, Loader2, Target, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, ExternalLink, Info, Loader2, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { setTargetPrice, unwatch } from "@/app/actions";
+import { unwatch } from "@/app/actions";
+import { AlertSettingsForm } from "@/components/alert-settings-form";
 import { ManualPriceForm } from "@/components/manual-price-form";
 import { PriceBlock } from "@/components/price-block";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { requireUser } from "@/lib/supabase/server";
 import { isStale, timeAgo } from "@/lib/time";
 import { getProductDetail, type ListingView } from "@/lib/watches";
@@ -161,30 +160,12 @@ export default async function ProductoPage({
 
       {/* Alerta + dejar de seguir */}
       <section className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target aria-hidden className="size-5 text-brand" />
-              Precio objetivo
-            </CardTitle>
-            <CardDescription>Te avisaremos cuando baje de este precio (avisos en la Fase 4).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={setTargetPrice.bind(null, p.productId)} className="flex items-end gap-2">
-              <div className="flex flex-1 flex-col gap-2">
-                <Label htmlFor="target">Avisarme bajo</Label>
-                <Input
-                  id="target"
-                  name="target"
-                  inputMode="numeric"
-                  placeholder={p.bestNoCard ? formatCLP(Math.round((p.bestNoCard * 0.9) / 1000) * 1000) : "$0"}
-                  defaultValue={p.targetPrice ? formatCLP(p.targetPrice) : ""}
-                />
-              </div>
-              <Button type="submit">Guardar</Button>
-            </form>
-          </CardContent>
-        </Card>
+        <AlertSettingsForm
+          productId={p.productId}
+          values={p.alertSettings}
+          suggestedTarget={p.bestNoCard ? Math.round((p.bestNoCard * 0.9) / 1000) * 1000 : undefined}
+          hasThirdParty={p.hasThirdParty}
+        />
         <Card className="justify-between">
           <CardHeader>
             <CardTitle>Dejar de seguir</CardTitle>

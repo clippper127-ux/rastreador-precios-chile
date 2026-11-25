@@ -1,27 +1,37 @@
-import { LogOut, Mail, MapPin, Send } from "lucide-react";
+import { schema } from "@rastreador/db";
+import { eq } from "drizzle-orm";
+import { LogOut, Mail, MapPin } from "lucide-react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { ExtensionTokenCard } from "@/components/extension-token-card";
+import { NotificationSettings } from "@/components/notification-settings";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { headers } from "next/headers";
-import { ExtensionTokenCard } from "@/components/extension-token-card";
 import { db } from "@/lib/db";
-import { hasExtensionToken } from "@/lib/extension-token";
 import { requireUser } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Ajustes" };
 
 export default async function ConfiguracionPage() {
   const user = await requireUser("/configuracion");
-  const hasToken = await hasExtensionToken(db(), user.id);
+  const profile = await db().query.profiles.findFirst({ where: eq(schema.profiles.id, user.id) });
   const h = await headers();
   const apiUrl = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost:3000"}`;
+
   return (
     <>
-      <PageHeader title="Ajustes" description="Canales de aviso, comuna y tiendas activas." />
+      <PageHeader title="Ajustes" description="Canales de aviso, extensión y cuenta." />
       <div className="grid gap-4 lg:grid-cols-2">
-        <ExtensionTokenCard hasToken={hasToken} apiUrl={apiUrl} />
+        <NotificationSettings
+          telegramLinked={!!profile?.telegramChatId}
+          botConfigured={!!process.env.TELEGRAM_BOT_TOKEN}
+          emailEnabled={profile?.emailAlerts ?? true}
+          emailConfigured={!!process.env.RESEND_API_KEY}
+          email={user.email}
+        />
+        <ExtensionTokenCard hasToken={!!profile?.extensionTokenHash} apiUrl={apiUrl} />
         <Card>
           <CardHeader>
             <CardTitle>Cuenta</CardTitle>
@@ -37,18 +47,6 @@ export default async function ConfiguracionPage() {
             </form>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Canales de aviso</CardTitle>
-            <CardDescription>Se configuran en la Fase 4.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <Row icon={Send} label="Telegram" status="Sin vincular" />
-            <Row icon={Mail} label="Correo" status="Sin activar" />
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Comuna</CardTitle>

@@ -1,4 +1,6 @@
 import { createDb, schema } from "@rastreador/db";
+import { deliverPendingAlerts } from "@rastreador/db/alerts";
+import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { eq, sql } from "drizzle-orm";
 import { env } from "./env";
 import { ping } from "./healthcheck";
@@ -12,6 +14,22 @@ async function main() {
 
   try {
     const summary = await runPass(db);
+
+    // Mensajes nuevos al bot (vinculaciones, links reenviados) y alertas pendientes.
+    let bot = { processed: 0, linked: 0, tracked: 0 };
+    if (env.telegramToken) {
+      try {
+        bot = await processTelegramUpdates(db, { token: env.telegramToken, appUrl: env.appUrl });
+      } catch (err) {
+        console.warn("Telegram no disponible:", (err as Error).message);
+      }
+    }
+    const delivery = await deliverPendingAlerts(db, {
+      appUrl: env.appUrl,
+      telegramToken: env.telegramToken,
+      resendApiKey: env.resendApiKey,
+      resendFrom: env.resendFrom,
+    });
     await db
       .update(schema.fetchRuns)
       .set({
@@ -19,7 +37,7 @@ async function main() {
         listingsChecked: summary.checked,
         snapshotsInserted: summary.snapshots,
         errors: summary.errors,
-        summary,
+        summary: { ...summary, bot, delivery },
       })
       .where(eq(schema.fetchRuns.id, run!.id));
 
@@ -29,6 +47,7 @@ async function main() {
         `${summary.snapshots} cambios, ${summary.errors} errores` +
         (summary.blockedStores.length ? `, bloqueadas: ${summary.blockedStores.join(", ")}` : ""),
     );
+    console.log(`  alertas: ${delivery.sent} enviadas, ${delivery.failed} fallidas · bot: ${bot.processed} mensajes`);
     for (const [store, s] of Object.entries(summary.byStore)) console.log(`  ${store}: ${s.ok} ok, ${s.errors} errores`);
     await ping(summary.errors > 0 && summary.checked === 0 ? "fail" : "success", JSON.stringify(summary));
   } catch (err) {

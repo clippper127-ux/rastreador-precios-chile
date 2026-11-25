@@ -72,6 +72,27 @@ Reglas: respetar `robots.txt`, User-Agent honesto, nada con login, preferir dato
   Para probarlo en tu PC: `pnpm worker:once`. Para una prueba completa sin datos de usuarios: `pnpm --filter @rastreador/worker smoke`.
 - **Extensión:** ver abajo.
 
+## Alertas (Telegram y correo)
+
+Se avisa cuando un producto que sigues baja de tu precio objetivo, baja más de X %, llega a su mínimo
+histórico o vuelve a tener stock. Cada evento se avisa una vez; si hay varios motivos a la vez van en un
+solo mensaje. Se configuran por producto (detalle → **Alertas**) y quedan todas en la página **Alertas**.
+
+**Telegram (recomendado, gratis):**
+1. En Telegram habla con **@BotFather** → `/newbot` → elige nombre y usuario (termina en `bot`).
+2. Copia el token que te da y ponlo en `.env` como `TELEGRAM_BOT_TOKEN` (y como secret en GitHub Actions).
+3. Reinicia la app → **Ajustes → Canales de aviso → Vincular Telegram** → abre el bot, toca **Iniciar** → **Ya toqué Iniciar**.
+
+El bot no usa webhook: lee sus mensajes en cada pasada del worker y cuando pulsas "Ya toqué Iniciar".
+
+**Grupos de ofertas:** reenvíale al bot cualquier mensaje de un grupo (o pega un link). Si trae links de
+tiendas soportadas —también acortados o de afiliados— los sigue por ti y te responde con el link al historial.
+
+**Correo (Resend, gratis 100/día):** crea una cuenta en resend.com, genera una API key y ponla en
+`RESEND_API_KEY`. Sin dominio propio solo puede enviar al correo de tu cuenta de Resend.
+
+Pruebas sin enviar nada real: `pnpm --filter @rastreador/db exec tsx src/smoke-alerts.ts`.
+
 ## Extensión de navegador (Falabella, Paris, Ripley, Lider)
 
 Estas tiendas bloquean al servidor, así que el precio llega desde tu navegador cuando abres la ficha.

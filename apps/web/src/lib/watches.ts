@@ -8,7 +8,7 @@ import {
   type StockStatus,
 } from "@rastreador/core";
 import { schema } from "@rastreador/db";
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "./db";
 
 /*
@@ -191,6 +191,16 @@ export interface ProductDetail {
   brand: string | null;
   imageUrl: string | null;
   targetPrice: number | null;
+  alertSettings: {
+    targetPrice: number | null;
+    dropPct: string | null;
+    notifyAllTimeLow: boolean;
+    notifyRestock: boolean;
+    excludeThirdParty: boolean;
+    priceBasis: "no_card" | "with_card";
+    channels: string[];
+  };
+  hasThirdParty: boolean;
   listings: ListingView[];
   history: HistoryPoint[];
   /** Estadísticas del mejor listing (sin tarjeta), ponderadas por tiempo. */
@@ -264,6 +274,16 @@ export async function getProductDetail(userId: string, productId: string): Promi
     brand: row.product.brand,
     imageUrl: row.product.imageUrl ?? best?.imageUrl ?? null,
     targetPrice: row.watch.targetPrice,
+    alertSettings: {
+      targetPrice: row.watch.targetPrice,
+      dropPct: row.watch.dropPct,
+      notifyAllTimeLow: row.watch.notifyAllTimeLow,
+      notifyRestock: row.watch.notifyRestock,
+      excludeThirdParty: row.watch.excludeThirdParty,
+      priceBasis: row.watch.priceBasis,
+      channels: row.watch.channels,
+    },
+    hasThirdParty: links.some((l) => l.listing.sellerType === "third_party"),
     listings,
     history,
     stats,
@@ -274,4 +294,47 @@ export async function getProductDetail(userId: string, productId: string): Promi
     bestWithCard: minBy(listings, (l) => l.bestWithCard)?.bestWithCard,
     best,
   };
+}
+
+export interface AlertRow {
+  id: string;
+  kind: "target" | "drop_pct" | "all_time_low" | "restock";
+  channel: string;
+  status: "pending" | "sent" | "failed";
+  reason: string;
+  price: number | null;
+  createdAt: Date;
+  productId: string;
+  productName: string;
+  storeName: string;
+  error?: string;
+}
+
+/** Historial de alertas del usuario (más recientes primero). */
+export async function listAlerts(userId: string, limit = 100): Promise<AlertRow[]> {
+  const rows = await db()
+    .select({ alert: schema.alerts, product: schema.products, store: schema.stores })
+    .from(schema.alerts)
+    .innerJoin(schema.listings, eq(schema.listings.id, schema.alerts.listingId))
+    .innerJoin(schema.products, eq(schema.products.id, schema.listings.productId))
+    .innerJoin(schema.stores, eq(schema.stores.id, schema.listings.storeId))
+    .where(eq(schema.alerts.userId, userId))
+    .orderBy(desc(schema.alerts.createdAt))
+    .limit(limit);
+  return rows.map(({ alert, product, store }) => {
+    const payload = (alert.payload ?? {}) as { reason?: string; price?: number; error?: string };
+    return {
+      id: alert.id,
+      kind: alert.kind,
+      channel: alert.channel,
+      status: alert.status,
+      reason: payload.reason ?? "",
+      price: payload.price ?? null,
+      createdAt: alert.createdAt,
+      productId: product.id,
+      productName: product.canonicalName.replace(/^Pendiente:\s*/, ""),
+      storeName: store.name,
+      error: payload.error,
+    };
+  });
 }

@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { issueExtensionToken, revokeExtensionToken } from "@/lib/extension-token";
+import { deliverSoon } from "@/lib/notify";
 import { getUser } from "@/lib/supabase/server";
 import { ensureTracked, recordCapture, userFollowsListing } from "@/lib/track";
 
@@ -70,17 +71,6 @@ function clpFromForm(v: FormDataEntryValue | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-/** Precio objetivo (las alertas llegan en la Fase 4; el valor ya queda guardado). */
-export async function setTargetPrice(productId: string, formData: FormData): Promise<void> {
-  const user = await getUser();
-  if (!user) redirect("/login");
-  await db()
-    .update(schema.watches)
-    .set({ targetPrice: clpFromForm(formData.get("target")) ?? null })
-    .where(and(eq(schema.watches.userId, user.id), eq(schema.watches.productId, productId)));
-  revalidatePath(`/producto/${productId}`);
-}
-
 export type ManualResult = { ok: true } | { error: string } | undefined;
 
 /** "Actualizar precio a mano": cuando nada más funciona. Se guarda con source = manual. */
@@ -106,7 +96,8 @@ export async function manualPrice(listingId: string, _prev: ManualResult, formDa
   if (capture.priceOffer && capture.priceNormal && capture.priceOffer >= capture.priceNormal) {
     return { error: "La oferta debería ser menor que el precio normal." };
   }
-  await recordCapture(d, listingId, capture, "manual", user.id);
+  const { changed } = await recordCapture(d, listingId, capture, "manual", user.id);
+  if (changed) deliverSoon();
   revalidatePath(`/producto/${listing.productId}`);
   revalidatePath("/seguimientos");
   return { ok: true };
