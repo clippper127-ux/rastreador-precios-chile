@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Buscar", icon: Search },
-  { href: "/seguimientos", label: "Seguimientos", icon: LayoutGrid },
+  { href: "/seguimientos", label: "Seguimientos", short: "Seguidos", icon: LayoutGrid },
   { href: "/radar", label: "Radar", icon: Radio },
   { href: "/cupones", label: "Cupones", icon: Ticket },
   { href: "/alertas", label: "Alertas", icon: Bell },
@@ -59,8 +59,11 @@ export function MobileNav() {
       aria-label="Principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5">
-        {NAV.map(({ href, label, icon: Icon }) => {
+      <ul className="mx-auto grid max-w-md grid-cols-6">
+        {NAV.map((item) => {
+          const { href, label, icon: Icon } = item;
+          // En móvil caben 6 íconos en una fila solo con etiquetas cortas.
+          const text = "short" in item ? item.short : label;
           const active = isActive(pathname, href);
           return (
             <li key={href}>
@@ -68,12 +71,12 @@ export function MobileNav() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
+                  "flex min-w-0 flex-col items-center gap-1 px-0.5 py-2.5 text-[11px] font-medium",
                   active ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 <Icon aria-hidden className={cn("size-5", active && "text-brand")} strokeWidth={active ? 2.25 : 1.75} />
-                {label}
+                <span className="max-w-full truncate">{text}</span>
               </Link>
             </li>
           );
