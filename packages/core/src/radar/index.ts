@@ -15,6 +15,9 @@ export interface RawPost {
   postedAt: Date;
   text: string;
   links: string[];
+  /** Total de reacciones y de respuestas (solo grupos leídos con la cuenta dedicada). */
+  reactions?: number;
+  replies?: number;
 }
 
 // ─── Vista web pública de canales: https://t.me/s/<canal> ───────────────────
@@ -161,3 +164,5 @@ export function matchDeal(
 
   return reasons.length ? { reasons, productIds: [...productIds] } : null;
 }
+
+export * from "./hot";

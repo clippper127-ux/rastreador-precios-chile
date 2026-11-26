@@ -1,6 +1,10 @@
 import {
   analyzeDealText,
   channelHandle,
+  chatBuzz,
+  dealFingerprint,
+  HOT_LEVELS,
+  hotScore,
   formatCLP,
   matchDeal,
   parseChannelPage,
@@ -8,7 +12,7 @@ import {
   type Interest,
   type RawPost,
 } from "@rastreador/core";
-import { and, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Transport } from "./alerts";
 import type { Database } from "./client";
 import * as schema from "./schema";
@@ -85,6 +89,9 @@ export async function storePosts(db: Database, channelId: string, posts: RawPost
         prices: a.prices,
         discountPct: a.discountPct ?? null,
         flags: a.flags,
+        reactions: p.reactions ?? 0,
+        replies: p.replies ?? 0,
+        fingerprint: dealFingerprint(p.text, links.map((l) => l.url)),
       })
       .onConflictDoNothing()
       .returning({ id: schema.dealPosts.id });
@@ -99,7 +106,7 @@ export async function pollPublicChannels(db: Database): Promise<{ channels: numb
     .selectDistinct({ channel: schema.dealChannels })
     .from(schema.dealChannels)
     .innerJoin(schema.dealSubscriptions, eq(schema.dealSubscriptions.channelId, schema.dealChannels.id))
-    .where(and(eq(schema.dealChannels.kind, "channel"), eq(schema.dealSubscriptions.enabled, true)));
+    .where(and(eq(schema.dealChannels.kind, "channel"), sql`${schema.dealChannels.id} like 'c:%'`, eq(schema.dealSubscriptions.enabled, true)));
 
   let newPosts = 0;
   let errors = 0;
@@ -281,13 +288,15 @@ export async function readerChatState(db: Database, chatId: number) {
  */
 export async function ingestReaderChat(
   db: Database,
-  chat: { chatId: number; title: string; handle?: string },
+  chat: { chatId: number; title: string; handle?: string; broadcast?: boolean },
   posts: RawPost[],
 ): Promise<number> {
   const id = `u:${chat.chatId}`;
   const existing = await readerChatState(db, chat.chatId);
   if (!existing) {
-    await db.insert(schema.dealChannels).values({ id, kind: "group", chatId: chat.chatId, handle: chat.handle ?? null, title: chat.title, lastPostId: 0 });
+    await db
+      .insert(schema.dealChannels)
+      .values({ id, kind: chat.broadcast ? "channel" : "group", chatId: chat.chatId, handle: chat.handle ?? null, title: chat.title, lastPostId: 0 });
     // Se suscribe a quienes tienen Telegram vinculado (los que recibirán los avisos).
     const owners = await db.select({ id: schema.profiles.id }).from(schema.profiles).where(isNotNull(schema.profiles.telegramChatId));
     for (const a of owners) {
@@ -301,10 +310,145 @@ export async function ingestReaderChat(
     .update(schema.dealChannels)
     .set({
       title: chat.title,
+      kind: chat.broadcast ? "channel" : "group",
       lastPostId: Math.max(existing?.lastPostId ?? 0, ...posts.map((p) => p.id)),
       lastCheckedAt: new Date(),
       lastError: null,
     })
     .where(eq(schema.dealChannels.id, id));
   return existing ? ids.length : 0;
+}
+
+// ─── Ofertas destacadas ───────────────────────────────────────────────────────
+
+const HOT_WINDOW_MS = 6 * 3_600_000;
+
+/** Actualiza reacciones y respuestas de mensajes recientes ya guardados (las ofertas buenas "explotan" después). */
+export async function updateEngagement(db: Database, channelId: string, posts: RawPost[]): Promise<void> {
+  const since = Date.now() - HOT_WINDOW_MS;
+  for (const p of posts) {
+    if (p.postedAt.getTime() < since || (!p.reactions && !p.replies)) continue;
+    await db
+      .update(schema.dealPosts)
+      .set({ reactions: p.reactions ?? 0, replies: p.replies ?? 0 })
+      .where(and(eq(schema.dealPosts.channelId, channelId), eq(schema.dealPosts.externalId, p.id)));
+  }
+}
+
+/**
+ * Revisa los mensajes de las últimas 6 h y marca como "oferta destacada" los que pasan el umbral
+ * de cada usuario (con tope diario y sin repetir la misma oferta vista en otro grupo).
+ */
+export async function scoreHotPosts(db: Database): Promise<number> {
+  // 9 h de contexto para medir la conversación; se avisan solo mensajes de las últimas 6 h.
+  const context = await db
+    .select()
+    .from(schema.dealPosts)
+    .where(gte(schema.dealPosts.postedAt, new Date(Date.now() - HOT_WINDOW_MS - 3 * 3_600_000)));
+  const posts = context.filter((p) => p.postedAt.getTime() >= Date.now() - HOT_WINDOW_MS);
+  if (!posts.length) return 0;
+  const buzz = new Map<number, { count: number; word: string }>();
+  const byChannel = new Map<string, typeof context>();
+  for (const p of context) byChannel.set(p.channelId, [...(byChannel.get(p.channelId) ?? []), p]);
+  const groups = new Set(
+    (await db.select({ id: schema.dealChannels.id }).from(schema.dealChannels).where(eq(schema.dealChannels.kind, "group"))).map((c) => c.id),
+  );
+  // La conversación solo cuenta en chats donde la gente escribe (no en canales automáticos).
+  for (const [ch, list] of byChannel) if (groups.has(ch)) for (const [id, b] of chatBuzz(list)) buzz.set(id, b);
+
+  const subs = await db
+    .select({ sub: schema.dealSubscriptions, profile: schema.profiles })
+    .from(schema.dealSubscriptions)
+    .innerJoin(schema.profiles, eq(schema.profiles.id, schema.dealSubscriptions.userId))
+    .where(and(eq(schema.dealSubscriptions.enabled, true), gt(schema.profiles.radarHotLevel, 0)));
+  if (!subs.length) return 0;
+
+  // Mínimo histórico de las publicaciones enlazadas que ya conocemos.
+  const urls = [...new Set(posts.flatMap((p) => (p.storeLinks as { url: string }[]).map((l) => l.url)))];
+  const histMin = new Map<string, number>();
+  if (urls.length) {
+    const rows = await db
+      .select({
+        url: schema.listings.url,
+        min: sql<number | null>`min(least(coalesce(${schema.priceSnapshots.priceCard}, ${schema.priceSnapshots.priceNormal}), ${schema.priceSnapshots.priceNormal}))::int`,
+      })
+      .from(schema.listings)
+      .innerJoin(schema.priceSnapshots, eq(schema.priceSnapshots.listingId, schema.listings.id))
+      .where(inArray(schema.listings.url, urls))
+      .groupBy(schema.listings.url);
+    for (const r of rows) if (r.min) histMin.set(r.url, r.min);
+  }
+
+  let marked = 0;
+  for (const { sub, profile } of subs) {
+    const level = HOT_LEVELS[profile.radarHotLevel as 1 | 2 | 3];
+    if (!level) continue;
+    const recent = await db
+      .select({ fingerprint: schema.dealPosts.fingerprint, channelId: schema.dealPosts.channelId, at: schema.dealMatches.createdAt })
+      .from(schema.dealMatches)
+      .innerJoin(schema.dealPosts, eq(schema.dealPosts.id, schema.dealMatches.postId))
+      .where(
+        and(
+          eq(schema.dealMatches.userId, sub.userId),
+          eq(schema.dealMatches.hot, true),
+          gte(schema.dealMatches.createdAt, new Date(Date.now() - 86_400_000)),
+        ),
+      );
+    const seen = new Set(recent.map((r) => r.fingerprint));
+    const perChannel = new Map<string, number>();
+    for (const m of recent) {
+      if (m.at.getTime() >= Date.now() - HOT_WINDOW_MS) perChannel.set(m.channelId, (perChannel.get(m.channelId) ?? 0) + 1);
+    }
+    let used = recent.length;
+    const already = new Set(
+      (
+        await db
+          .select({ postId: schema.dealMatches.postId })
+          .from(schema.dealMatches)
+          .where(and(eq(schema.dealMatches.userId, sub.userId), inArray(schema.dealMatches.postId, posts.map((p) => p.id))))
+      ).map((r) => r.postId),
+    );
+
+    const candidates = posts
+      .filter((p) => p.channelId === sub.channelId && p.postedAt >= sub.createdAt && !already.has(p.id))
+      .map((p) => {
+        const links = (p.storeLinks as { url: string }[]).map((l) => l.url);
+        const mins = links.map((u) => histMin.get(u)).filter((n): n is number => !!n);
+        const r = hotScore(
+          {
+            text: p.text,
+            prices: p.prices,
+            discountPct: p.discountPct,
+            flags: p.flags,
+            reactions: p.reactions,
+            replies: p.replies,
+            historicalMin: mins.length ? Math.min(...mins) : null,
+            buzz: buzz.get(p.id),
+          },
+          profile.radarHotWords,
+        );
+        return { p, ...r };
+      })
+      .filter((c) => c.score >= level.minScore)
+      .sort((a, b) => b.score - a.score);
+
+    for (const c of candidates) {
+      if (used >= level.dailyCap) break;
+      if (c.p.fingerprint && seen.has(c.p.fingerprint)) continue;
+      // Máx. 2 por grupo en la ventana: un canal que publica en lote no copa los avisos.
+      if ((perChannel.get(c.p.channelId) ?? 0) >= 2) continue;
+      const rows = await db
+        .insert(schema.dealMatches)
+        .values({ userId: sub.userId, postId: c.p.id, reasons: [`🔥 Oferta destacada: ${c.reasons.join(" · ")}`], hot: true })
+        .onConflictDoNothing()
+        .returning({ postId: schema.dealMatches.postId });
+      if (rows.length) {
+        marked++;
+        used++;
+        if (c.p.fingerprint) seen.add(c.p.fingerprint);
+        perChannel.set(c.p.channelId, (perChannel.get(c.p.channelId) ?? 0) + 1);
+      }
+    }
+  }
+  return marked;
 }

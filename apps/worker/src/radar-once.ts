@@ -1,6 +1,6 @@
 import { createDb } from "@rastreador/db";
 import { httpTransport } from "@rastreador/db/alerts";
-import { notifyDealMatches, pollPublicChannels } from "@rastreador/db/radar";
+import { notifyDealMatches, pollPublicChannels, scoreHotPosts } from "@rastreador/db/radar";
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { env } from "./env";
 import { pollReaderAccount, readerConfig } from "./telegram-reader";
@@ -26,12 +26,13 @@ async function main() {
         reader.errors++;
       }
     }
+    const hot = await scoreHotPosts(db);
     const notified = await notifyDealMatches(
       db,
       env.appUrl,
       httpTransport({ appUrl: env.appUrl, telegramToken: env.telegramToken, resendApiKey: env.resendApiKey, resendFrom: env.resendFrom }),
     );
-    console.log(`Radar: ${polled.channels} canales, ${polled.newPosts} mensajes nuevos, ${polled.errors} errores · cuenta dedicada: ${reader.chats} grupos, ${reader.newPosts} mensajes nuevos, ${reader.errors} errores · bot: ${bot.processed} · avisos: ${notified}`);
+    console.log(`Radar: ${polled.channels} canales, ${polled.newPosts} mensajes nuevos, ${polled.errors} errores · cuenta dedicada: ${reader.chats} grupos, ${reader.newPosts} mensajes nuevos, ${reader.errors} errores · bot: ${bot.processed} · destacadas: ${hot} · avisos: ${notified}`);
   } finally {
     await db.$client.end();
   }

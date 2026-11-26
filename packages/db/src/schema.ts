@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  smallint,
   index,
   integer,
   jsonb,
@@ -77,6 +78,10 @@ export const profiles = pgTable("profiles", {
   /** Radar de ofertas: palabras a vigilar en canales/grupos y si avisar "errores de precio". */
   radarKeywords: text("radar_keywords").array().notNull().default(sql`'{}'::text[]`),
   radarPriceErrors: boolean("radar_price_errors").notNull().default(true),
+  /** Ofertas destacadas: 0 apagado, 1 pocas, 2 normal, 3 muchas. */
+  radarHotLevel: smallint("radar_hot_level").notNull().default(2),
+  /** Palabras extra que suman puntaje a una oferta ("tiradísimo", "a luca"...). */
+  radarHotWords: text("radar_hot_words").array().notNull().default(sql`'{}'::text[]`),
   emailAlerts: boolean("email_alerts").notNull().default(true),
   weeklyDigest: boolean("weekly_digest").notNull().default(false),
   /** Hash SHA-256 del token de la extensión; el token en claro solo se muestra una vez. */
@@ -391,6 +396,11 @@ export const dealPosts = pgTable(
     prices: integer("prices").array().notNull().default(sql`'{}'::integer[]`),
     discountPct: integer("discount_pct"),
     flags: text("flags").array().notNull().default(sql`'{}'::text[]`),
+    /** Reacciones y respuestas (grupos leídos con la cuenta dedicada; se actualizan durante 6 h). */
+    reactions: integer("reactions").notNull().default(0),
+    replies: integer("replies").notNull().default(0),
+    /** Huella para no avisar la misma oferta publicada en varios grupos. */
+    fingerprint: text("fingerprint"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -408,6 +418,8 @@ export const dealMatches = pgTable(
       .references(() => dealPosts.id, { onDelete: "cascade" }),
     reasons: text("reasons").array().notNull(),
     productIds: uuid("product_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** Avisada como "oferta destacada" (cuenta para el tope diario). */
+    hot: boolean("hot").notNull().default(false),
     notifiedAt: ts("notified_at"),
     createdAt: createdAt(),
   },

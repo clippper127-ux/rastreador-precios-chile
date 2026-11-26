@@ -81,6 +81,8 @@ export async function getRadar(userId: string) {
     posts,
     keywords: profile?.radarKeywords ?? [],
     priceErrors: profile?.radarPriceErrors ?? true,
+    hotLevel: profile?.radarHotLevel ?? 2,
+    hotWords: profile?.radarHotWords ?? [],
     telegramLinked: !!profile?.telegramChatId,
   };
 }

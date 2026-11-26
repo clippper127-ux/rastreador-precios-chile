@@ -166,6 +166,11 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
   3. `powershell -ExecutionPolicy Bypass -File scripts\github-secrets.ps1` para subir las tres a GitHub.
   4. Une esa cuenta a los grupos. Cada hora se leen **todos** sus grupos y canales; los nuevos se suscriben
      a quienes tienen Telegram vinculado (sus mensajes anteriores no se avisan). Solo lee: no escribe ni marca leído.
+- **Ofertas destacadas** (Radar → Qué avisarte): avisa ofertas muy buenas aunque no las sigas. Suma puntaje por
+  descuento alto (90 %+ se trata como posible error de precio), baja de precio en el mensaje, palabras como
+  "regalado" o "corran" (más las tuyas), reacciones y respuestas, varias personas hablando del mismo producto en un chat
+  (±3 h) y precio bajo el mínimo histórico conocido. Sensibilidad Pocas/Normal/Muchas con tope de 5/10/20 avisos al día,
+  máx. 2 por grupo cada 6 h, y la misma oferta en varios grupos llega una vez.
 - **Frecuencia:** el workflow `Radar` corre cada hora (`pnpm radar:once`, liviano). En tu PC puedes
   correrlo más seguido. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 

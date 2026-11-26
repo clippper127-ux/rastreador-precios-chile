@@ -182,7 +182,7 @@ export default async function RadarPage() {
               <CardTitle className="text-base">Qué avisarte</CardTitle>
             </CardHeader>
             <CardContent>
-              <RadarPrefsForm keywords={r.keywords} priceErrors={r.priceErrors} />
+              <RadarPrefsForm keywords={r.keywords} priceErrors={r.priceErrors} hotLevel={r.hotLevel} hotWords={r.hotWords} />
             </CardContent>
           </Card>
         </aside>

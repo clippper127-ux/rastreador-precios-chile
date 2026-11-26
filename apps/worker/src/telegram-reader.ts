@@ -1,6 +1,6 @@
 import type { RawPost } from "@rastreador/core";
 import type { Database } from "@rastreador/db";
-import { ingestReaderChat, readerChatState } from "@rastreador/db/radar";
+import { ingestReaderChat, readerChatState, updateEngagement } from "@rastreador/db/radar";
 import { Api, TelegramClient } from "telegram";
 import { LogLevel } from "telegram/extensions/Logger.js";
 import { StringSession } from "telegram/sessions/index.js";
@@ -50,7 +50,8 @@ export function toRawPost(m: Api.Message): RawPost | undefined {
     }
   }
   if (!text.trim() && !links.size) return undefined;
-  return { id: m.id, postedAt: new Date(m.date * 1000), text, links: [...links] };
+  const reactions = (m.reactions?.results ?? []).reduce((n, r) => n + (r.count ?? 0), 0);
+  return { id: m.id, postedAt: new Date(m.date * 1000), text, links: [...links], reactions, replies: m.replies?.replies ?? 0 };
 }
 
 /** Lee mensajes nuevos de todos los grupos y canales de la cuenta dedicada. */
@@ -69,11 +70,24 @@ export async function pollReaderAccount(db: Database, cfg: ReaderConfig): Promis
       try {
         const chatId = Number(d.id);
         const state = await readerChatState(db, chatId);
-        // Primera vez: solo los últimos mensajes, como punto de partida (no se avisan).
-        const msgs = await client.getMessages(d.entity, state ? { limit: 100, minId: state.lastPostId } : { limit: 20 });
-        const posts = msgs.map((m) => (m instanceof Api.Message ? toRawPost(m) : undefined)).filter((p): p is RawPost => !!p);
+        // Se leen los últimos 150 (primera vez: 20, como punto de partida que no se avisa).
+        // Releer los recientes permite ver cuántas reacciones y respuestas juntó cada oferta.
+        const msgs = (await client.getMessages(d.entity, { limit: state ? 150 : 20 })).filter((m): m is Api.Message => m instanceof Api.Message);
+        // En grupos, las respuestas se cuentan como mensajes que responden a otro (en canales viene en m.replies).
+        const replyCount = new Map<number, number>();
+        for (const m of msgs) {
+          const to = m.replyTo instanceof Api.MessageReplyHeader ? m.replyTo.replyToMsgId : undefined;
+          if (to) replyCount.set(to, (replyCount.get(to) ?? 0) + 1);
+        }
+        const posts = msgs
+          .map((m): RawPost | undefined => {
+            const p = toRawPost(m);
+            return p && { ...p, replies: Math.max(p.replies ?? 0, replyCount.get(m.id) ?? 0) };
+          })
+          .filter((p): p is RawPost => !!p);
         const handle = "username" in d.entity && d.entity.username ? d.entity.username : undefined;
-        newPosts += await ingestReaderChat(db, { chatId, title: d.title ?? d.name ?? "Grupo", handle }, posts);
+        newPosts += await ingestReaderChat(db, { chatId, title: d.title ?? d.name ?? "Grupo", handle, broadcast: !d.isGroup }, posts);
+        if (state) await updateEngagement(db, `u:${chatId}`, posts.filter((p) => p.id <= state.lastPostId));
         await new Promise((r) => setTimeout(r, 500));
       } catch {
         errors++;
