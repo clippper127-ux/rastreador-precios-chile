@@ -92,6 +92,13 @@
       "when": 1795661931765,
       "tag": "0012_radar_links",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795708512988,
+      "tag": "0013_revoke_public_functions",
+      "breakpoints": true
     }
   ]
 }

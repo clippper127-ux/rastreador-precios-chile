@@ -23,9 +23,9 @@
     "admin": "tsx src/make-admin.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.44.0",
-    "postgres": "^3.4.0",
-    "@rastreador/core": "workspace:*"
+    "@rastreador/core": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "postgres": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

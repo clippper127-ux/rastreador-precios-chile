@@ -1,6 +1,8 @@
 import { EXTENSION_STORES, adapters, parseListingUrl } from "@rastreador/core";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { Database } from "./client";
 import * as schema from "./schema";
 import { disableGroupRadar, enableGroupRadar, ingestGroupMessage } from "./radar";
@@ -89,6 +91,27 @@ export function urlsInMessage(msg: Pick<TgMessage, "text" | "caption" | "entitie
   return [...urls].map((u) => (/^https?:\/\//i.test(u) ? u : `https://${u}`)).slice(0, 5);
 }
 
+/** IP privada, local o reservada (no se le hacen requests: evita usar el servidor para llegar a redes internas). */
+export function isPrivateIp(ip: string): boolean {
+  const v = ip.toLowerCase().replace(/^::ffff:/, "");
+  if (isIP(v) === 4) {
+    const [a = 0, b = 0] = v.split(".").map(Number);
+    return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19));
+  }
+  return v === "::" || v === "::1" || /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || /^ff/.test(v);
+}
+
+/** El dominio solo resuelve a IPs públicas (si alguna es privada, se rechaza). */
+async function resolvesPublic(hostname: string): Promise<boolean> {
+  try {
+    const addrs = await lookup(hostname, { all: true });
+    return addrs.length > 0 && addrs.every((a) => !isPrivateIp(a.address));
+  } catch {
+    return false;
+  }
+}
+
 /** Sigue redirecciones de links acortados o de afiliados hasta llegar a la tienda (máx. 5 saltos). */
 export async function resolveLink(url: string): Promise<string> {
   let current = url;
@@ -97,6 +120,8 @@ export async function resolveLink(url: string): Promise<string> {
     // Solo https a dominios públicos: nunca IPs, localhost ni redes internas.
     const u = new URL(current);
     if (u.protocol !== "https:" || /^(localhost|[\d.]+|\[.*\])$/i.test(u.hostname) || !u.hostname.includes(".")) return current;
+    if (u.port && u.port !== "443") return current;
+    if (!(await resolvesPublic(u.hostname))) return current;
     try {
       const res = await fetch(current, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(4_000) });
       const loc = res.headers.get("location");
