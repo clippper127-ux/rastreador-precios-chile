@@ -1,6 +1,8 @@
 import {
   analyzeDealText,
   blockedByFilters,
+  detectStore,
+  extractCoupons,
   channelHandle,
   chatBuzz,
   dealFingerprint,
@@ -127,7 +129,10 @@ export async function storePosts(db: Database, channelId: string, posts: RawPost
       })
       .onConflictDoNothing()
       .returning({ id: schema.dealPosts.id });
-    if (rows[0]) inserted.push(rows[0].id);
+    if (rows[0]) {
+      inserted.push(rows[0].id);
+      await saveCoupons(db, rows[0].id, channelId, p.text, buyLinks(resolved, p.links));
+    }
   }
   return inserted;
 }
@@ -217,7 +222,12 @@ export async function matchPosts(db: Database, postIds: number[]): Promise<numbe
         { text: post.text, storeUrls: (post.storeLinks as { url: string }[]).map((l) => l.url), flags: post.flags as never },
         ctx.interests,
         ctx.keywords,
-        { priceErrors: ctx.priceErrors, blocked: blockedByFilters(post.text, ctx.filters).blocked },
+        {
+          priceErrors: ctx.priceErrors,
+          blocked: blockedByFilters(post.text, ctx.filters).blocked,
+          // "Error de precio" solo si el mensaje trae precio, descuento o link (no una conversación).
+          evidence: post.prices.length > 0 || post.discountPct != null || post.links.length > 0 || (post.storeLinks as unknown[]).length > 0,
+        },
       );
       if (!m) continue;
       const rows = await db
@@ -254,17 +264,25 @@ export async function notifyDealMatches(db: Database, appUrl: string, transport:
     const store = (post.storeLinks as { url: string; storeName: string }[]).map((l) => `🛒 ${l.storeName}: ${l.url}`);
     // Si no reconocemos la tienda, igual va el link del mensaje para comprar.
     const links = store.length ? store : buyLinks(post.links, []).slice(0, 2).map((u) => `🛒 Comprar: ${u}`);
-    const original = channel.handle ? `💬 Mensaje original: https://t.me/${channel.handle}/${post.externalId}` : "";
+    const original = channel.handle
+      ? `💬 Mensaje original: https://t.me/${channel.handle}/${post.externalId}`
+      : `💬 Mensaje original: en el grupo "${channel.title ?? ""}" (privado: ábrelo con la cuenta dedicada)`;
+    // Tienda: de los links reconocidos o del texto; si el mensaje no la dice, se avisa (no se inventa).
+    const storeName = (post.storeLinks as { storeName: string }[])[0]?.storeName ?? detectStore(post.text, post.links);
+    const coupons = extractCoupons(post.text);
+    const app = appUrl.replace(/\/+$/, "");
     const text = [
       `📣 ${channel.title ?? "Radar"}`,
       ...match.reasons.map((r) => `• ${r}`),
+      `🏬 Tienda: ${storeName ?? "el mensaje no la dice (revisa el mensaje original)"}`,
+      coupons.length ? `🎟️ Cupones: ${coupons.map((c) => c.code).join(", ")} → ${app}/cupones` : "",
       post.prices.length ? `Precios: ${post.prices.map((p) => formatCLP(p)).join(" · ")}` : "",
       "",
       post.text.slice(0, 600),
       ...(links.length ? ["", ...links] : []),
       original,
       "",
-      `Radar: ${appUrl.replace(/\/+$/, "")}/radar`,
+      `Radar: ${app}/radar`,
     ]
       .filter((l, i, arr) => l !== "" || arr[i - 1] !== "")
       .join("\n");
@@ -514,4 +532,41 @@ export async function scoreHotPosts(db: Database): Promise<number> {
     }
   }
   return marked;
+}
+
+// ─── Cupones ──────────────────────────────────────────────────────────────────
+
+/** Guarda los cupones del mensaje (uno por código y tienda; si se repite, se actualiza cuándo se vio). */
+export async function saveCoupons(db: Database, postId: number, channelId: string, text: string, links: string[]): Promise<number> {
+  const coupons = extractCoupons(text);
+  if (!coupons.length) return 0;
+  const store = detectStore(text, links) ?? null;
+  for (const c of coupons) {
+    await db
+      .insert(schema.dealCoupons)
+      .values({ code: c.code, store, storeKey: store ?? "", benefit: c.benefit ?? null, minPurchase: c.minPurchase ?? null, postId, channelId })
+      .onConflictDoUpdate({
+        target: [schema.dealCoupons.code, schema.dealCoupons.storeKey],
+        set: {
+          lastSeenAt: new Date(),
+          postId,
+          channelId,
+          benefit: sql`coalesce(excluded.benefit, ${schema.dealCoupons.benefit})`,
+          minPurchase: sql`coalesce(excluded.min_purchase, ${schema.dealCoupons.minPurchase})`,
+        },
+      });
+  }
+  return coupons.length;
+}
+
+/** Recorre mensajes ya guardados (para llenar la pestaña con lo de los últimos días). */
+export async function backfillCoupons(db: Database, days = 14): Promise<number> {
+  const posts = await db
+    .select({ id: schema.dealPosts.id, channelId: schema.dealPosts.channelId, text: schema.dealPosts.text, links: schema.dealPosts.links })
+    .from(schema.dealPosts)
+    .where(gte(schema.dealPosts.postedAt, new Date(Date.now() - days * 86_400_000)))
+    .orderBy(schema.dealPosts.postedAt);
+  let n = 0;
+  for (const p of posts) n += await saveCoupons(db, p.id, p.channelId, p.text, p.links);
+  return n;
 }

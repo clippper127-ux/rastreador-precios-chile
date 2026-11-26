@@ -99,6 +99,13 @@
       "when": 1795708512988,
       "tag": "0013_revoke_public_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795723675070,
+      "tag": "0014_deal_coupons",
+      "breakpoints": true
     }
   ]
 }

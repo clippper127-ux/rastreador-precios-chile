@@ -137,7 +137,7 @@ export function matchDeal(
   interests: Interest[],
   keywords: string[],
   /** blocked: el mensaje cae en una categoría o palabra filtrada (no se avisa como error de precio). */
-  opts: { priceErrors: boolean; blocked?: boolean } = { priceErrors: true },
+  opts: { priceErrors: boolean; blocked?: boolean; evidence?: boolean } = { priceErrors: true },
 ): DealMatch | null {
   const reasons: string[] = [];
   const productIds = new Set<string>();
@@ -164,7 +164,7 @@ export function matchDeal(
     const kq = parseQuery(k);
     if (kq.tokens.length && relevance(kq, post.text) === 1) reasons.push(`Contiene "${k}"`);
   }
-  if (opts.priceErrors && !opts.blocked && post.flags.includes("error_precio")) reasons.push("Posible error de precio");
+  if (opts.priceErrors && !opts.blocked && opts.evidence !== false && post.flags.includes("error_precio")) reasons.push("Posible error de precio");
 
   return reasons.length ? { reasons, productIds: [...productIds] } : null;
 }
@@ -172,3 +172,4 @@ export function matchDeal(
 export * from "./hot";
 
 export * from "./categories";
+export * from "./coupons";

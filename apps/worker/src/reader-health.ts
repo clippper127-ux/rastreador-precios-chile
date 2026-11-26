@@ -51,7 +51,8 @@ export async function alertVerification(
     [
       `⚠️ "${info.title}" le pide verificación a la cuenta dedicada.`,
       "Abre Telegram con esa cuenta, entra al grupo y responde (botón, captcha o pregunta). Si no, suelen sacarla en pocos minutos.",
-      link(info, m.id),
+      `Lo que dice: «${(m.message ?? "").slice(0, 200)}»`,
+      link(info, m.id) || `Búscalo en Telegram como "${info.title}".`,
     ]
       .filter(Boolean)
       .join("\n\n"),
@@ -65,17 +66,22 @@ export async function alertVerification(
 export async function checkReaderHealth(db: Database, client: TelegramClient, token: string | undefined, current: Set<number>): Promise<void> {
   // 1) Bots que le escribieron por privado y no se han leído.
   const dialogs = await client.getDialogs({ limit: 100 });
+  // Nuestro propio bot (la cuenta dedicada también recibe sus avisos) y BotFather no cuentan: si no, cada
+  // aviso del bot generaría otro aviso.
+  const ownBotId = token?.split(":")[0];
   for (const d of dialogs) {
     const e = d.entity;
     if (!(e instanceof Api.User) || !e.bot || !d.unreadCount || !d.message) continue;
+    if (e.id.toString() === ownBotId || e.username?.toLowerCase() === "botfather") continue;
     await alertOnce(
       db,
       token,
       `botdm:${e.id.toString()}:${d.message.id}`,
       [
         `⚠️ El bot ${e.username ? `@${e.username}` : (e.firstName ?? "")} le escribió por privado a la cuenta dedicada (posible verificación de un grupo).`,
-        "Ábrelo con esa cuenta y responde tú.",
-        (d.message.message ?? "").slice(0, 300),
+        "Ábrelo con esa cuenta y responde tú. Lo que dice:",
+        `«${(d.message.message ?? "").slice(0, 300)}»`,
+        e.username ? `Abrir el bot: https://t.me/${e.username}` : "",
       ]
         .filter(Boolean)
         .join("\n\n"),

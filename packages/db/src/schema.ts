@@ -415,6 +415,31 @@ export const dealPosts = pgTable(
   ],
 );
 
+/**
+ * Cupones mencionados en canales y grupos (pestaña Cupones). Uno por código y tienda: si se repite,
+ * se actualiza cuándo se vio por última vez y el mensaje de origen.
+ */
+export const dealCoupons = pgTable(
+  "deal_coupons",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    code: text("code").notNull(),
+    /** Tienda detectada en el mensaje; null si el mensaje no la dice. */
+    store: text("store"),
+    /** Para la unicidad (store o ""). */
+    storeKey: text("store_key").notNull().default(""),
+    benefit: text("benefit"),
+    minPurchase: integer("min_purchase"),
+    postId: bigint("post_id", { mode: "number" }).references(() => dealPosts.id, { onDelete: "set null" }),
+    channelId: text("channel_id")
+      .notNull()
+      .references(() => dealChannels.id, { onDelete: "cascade" }),
+    firstSeenAt: ts("first_seen_at").notNull().defaultNow(),
+    lastSeenAt: ts("last_seen_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("deal_coupons_code_store_uq").on(t.code, t.storeKey), index("deal_coupons_seen_idx").on(t.lastSeenAt.desc())],
+);
+
 export const dealMatches = pgTable(
   "deal_matches",
   {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LayoutGrid, Radio, Search, Settings } from "lucide-react";
+import { Bell, LayoutGrid, Radio, Search, Settings, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/", label: "Buscar", icon: Search },
   { href: "/seguimientos", label: "Seguimientos", icon: LayoutGrid },
   { href: "/radar", label: "Radar", icon: Radio },
+  { href: "/cupones", label: "Cupones", icon: Ticket },
   { href: "/alertas", label: "Alertas", icon: Bell },
   { href: "/configuracion", label: "Ajustes", icon: Settings },
 ] as const;
