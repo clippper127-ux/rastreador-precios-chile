@@ -84,7 +84,7 @@ export function buyLinks(resolved: string[], raw: string[]): string[] {
       const h = new URL(u);
       const host = h.hostname.toLowerCase();
       if (/^(www\.)?(t\.me|telegram\.me)$|(^|\.)google\.[a-z.]+$/.test(host)) continue;
-      if (/\.(jpe?g|png|gif|webp|avif|svg|mp4)$/i.test(h.pathname) || /(^|\.)(cdn|img|images|static|assets)|vtexassets|cdn\.shopify|cloudfront|mlstatic/.test(host) || /\/(files|arquivos)\//.test(h.pathname)) continue;
+      if (/\.(jpe?g|png|gif|webp|avif|svg|mp4)$/i.test(h.pathname) || /(^|\.)(cdn|img|images|static|assets)\b|vtexassets|cdn\.shopify|cloudfront|mlstatic/.test(host) || /\/(files|arquivos)\//.test(h.pathname)) continue;
     } catch {
       continue;
     }
