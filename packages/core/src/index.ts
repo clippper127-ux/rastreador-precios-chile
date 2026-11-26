@@ -13,3 +13,4 @@ export * from "./radar";
 export * from "./insights";
 export * from "./solotodo";
 export * from "./unit-price";
+export * from "./alternatives";

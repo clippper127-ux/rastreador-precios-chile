@@ -3,8 +3,10 @@ import { ArrowLeft, Clock, ExternalLink, Loader2, Trash2, TriangleAlert } from "
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { unwatch } from "@/app/actions";
 import { AlertSettingsForm } from "@/components/alert-settings-form";
+import { Alternatives, AlternativesSkeleton } from "@/components/alternatives";
 import { AddToListForm } from "@/components/list-forms";
 import { getLists } from "@/lib/lists";
 import { ManualPriceForm } from "@/components/manual-price-form";
@@ -172,6 +174,11 @@ export default async function ProductoPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Alternativas (se cargan aparte para no frenar la página) */}
+      <Suspense fallback={<AlternativesSkeleton />}>
+        <Alternatives name={p.name} brand={p.brand} urls={p.listings.map((l) => l.url)} bestNoCard={p.bestNoCard} />
+      </Suspense>
 
       {/* Alerta + dejar de seguir */}
       <section className="grid gap-4 md:grid-cols-2">
