@@ -32,11 +32,14 @@ function ask(question: string, hidden = false): Promise<string> {
   );
 }
 
+/** --live: segunda sesión para el radar en tiempo real del PC (no se sube a GitHub). */
+const KEY = process.argv.includes("--live") ? "TG_SESSION_LIVE" : "TG_SESSION";
+
 function saveSession(session: string) {
   const lines = readFileSync(ENV_PATH, "utf8").split(/\r?\n/);
-  const i = lines.findIndex((l) => /^\s*TG_SESSION\s*=/.test(l));
-  if (i >= 0) lines[i] = `TG_SESSION=${session}`;
-  else lines.push(`TG_SESSION=${session}`);
+  const i = lines.findIndex((l) => l.trimStart().startsWith(`${KEY}=`) || l.trimStart().startsWith(`${KEY} =`));
+  if (i >= 0) lines[i] = `${KEY}=${session}`;
+  else lines.push(`${KEY}=${session}`);
   writeFileSync(ENV_PATH, lines.join("\n"));
 }
 
@@ -86,7 +89,7 @@ async function main() {
   saveSession(String(client.session.save()));
   await client.disconnect();
   await client.destroy().catch(() => {});
-  console.log(`\n✅ Sesión guardada en .env (TG_SESSION) para la cuenta ${"firstName" in me ? me.firstName : ""}.`);
+  console.log(`\n✅ Sesión guardada en .env (${KEY}) para la cuenta ${"firstName" in me ? me.firstName : ""}.`);
   console.log("No compartas esa línea: da acceso a esa cuenta de Telegram.");
 }
 

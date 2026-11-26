@@ -58,45 +58,73 @@ export function toRawPost(m: Api.Message): RawPost | undefined {
 export async function pollReaderAccount(db: Database, cfg: ReaderConfig): Promise<{ chats: number; newPosts: number; errors: number }> {
   const client = readerClient(cfg);
   await client.connect();
-  let chats = 0;
-  let newPosts = 0;
-  let errors = 0;
   try {
     if (!(await client.checkAuthorization())) throw new Error("La sesión de Telegram ya no es válida: vuelve a correr pnpm telegram:login");
-    const dialogs = await client.getDialogs({ limit: 200 });
-    for (const d of dialogs) {
-      if (!(d.isGroup || d.isChannel) || !d.entity) continue;
-      chats++;
-      try {
-        const chatId = Number(d.id);
-        const state = await readerChatState(db, chatId);
-        // Se leen los últimos 150 (primera vez: 20, como punto de partida que no se avisa).
-        // Releer los recientes permite ver cuántas reacciones y respuestas juntó cada oferta.
-        const msgs = (await client.getMessages(d.entity, { limit: state ? 150 : 20 })).filter((m): m is Api.Message => m instanceof Api.Message);
-        // En grupos, las respuestas se cuentan como mensajes que responden a otro (en canales viene en m.replies).
-        const replyCount = new Map<number, number>();
-        for (const m of msgs) {
-          const to = m.replyTo instanceof Api.MessageReplyHeader ? m.replyTo.replyToMsgId : undefined;
-          if (to) replyCount.set(to, (replyCount.get(to) ?? 0) + 1);
-        }
-        const posts = msgs
-          .map((m): RawPost | undefined => {
-            const p = toRawPost(m);
-            return p && { ...p, replies: Math.max(p.replies ?? 0, replyCount.get(m.id) ?? 0) };
-          })
-          .filter((p): p is RawPost => !!p);
-        const handle = "username" in d.entity && d.entity.username ? d.entity.username : undefined;
-        newPosts += await ingestReaderChat(db, { chatId, title: d.title ?? d.name ?? "Grupo", handle, broadcast: !d.isGroup }, posts);
-        if (state) await updateEngagement(db, `u:${chatId}`, posts.filter((p) => p.id <= state.lastPostId));
-        await new Promise((r) => setTimeout(r, 500));
-      } catch (err) {
-        errors++;
-        console.error(`Grupo ${chats}:`, (err as Error).message.slice(0, 200));
-      }
-    }
+    return await readChats(db, client);
   } finally {
     await client.disconnect();
     await client.destroy().catch(() => {});
+  }
+}
+
+export interface ChatInfo {
+  chatId: number;
+  title: string;
+  handle?: string;
+  broadcast: boolean;
+}
+
+/** Grupos y canales de la cuenta (id con el formato de Telegram, igual que message.chatId). */
+export async function listChats(client: TelegramClient): Promise<{ info: ChatInfo; entity: Api.TypeEntityLike }[]> {
+  const dialogs = await client.getDialogs({ limit: 200 });
+  return dialogs
+    .filter((d) => (d.isGroup || d.isChannel) && d.entity)
+    .map((d) => ({
+      entity: d.entity!,
+      info: {
+        chatId: Number(d.id),
+        title: d.title ?? d.name ?? "Grupo",
+        handle: "username" in d.entity! && d.entity!.username ? d.entity!.username : undefined,
+        broadcast: !d.isGroup,
+      },
+    }));
+}
+
+/** Mensaje de Telegram → mensaje del radar, contando respuestas entre los mensajes leídos. */
+export function toRawPosts(msgs: Api.Message[]): RawPost[] {
+  // En grupos, las respuestas se cuentan como mensajes que responden a otro (en canales viene en m.replies).
+  const replyCount = new Map<number, number>();
+  for (const m of msgs) {
+    const to = m.replyTo instanceof Api.MessageReplyHeader ? m.replyTo.replyToMsgId : undefined;
+    if (to) replyCount.set(to, (replyCount.get(to) ?? 0) + 1);
+  }
+  return msgs
+    .map((m): RawPost | undefined => {
+      const p = toRawPost(m);
+      return p && { ...p, replies: Math.max(p.replies ?? 0, replyCount.get(m.id) ?? 0) };
+    })
+    .filter((p): p is RawPost => !!p);
+}
+
+/** Relee los últimos mensajes de cada grupo: guarda los nuevos y actualiza reacciones/respuestas de los recientes. */
+export async function readChats(db: Database, client: TelegramClient): Promise<{ chats: number; newPosts: number; errors: number }> {
+  let chats = 0;
+  let newPosts = 0;
+  let errors = 0;
+  for (const { info, entity } of await listChats(client)) {
+    chats++;
+    try {
+      const state = await readerChatState(db, info.chatId);
+      // Se leen los últimos 150 (primera vez: 20, como punto de partida que no se avisa).
+      const msgs = (await client.getMessages(entity, { limit: state ? 150 : 20 })).filter((m): m is Api.Message => m instanceof Api.Message);
+      const posts = toRawPosts(msgs);
+      newPosts += await ingestReaderChat(db, info, posts);
+      if (state) await updateEngagement(db, `u:${info.chatId}`, posts.filter((p) => p.id <= state.lastPostId));
+      await new Promise((r) => setTimeout(r, 500));
+    } catch (err) {
+      errors++;
+      console.error(`Grupo ${chats}:`, (err as Error).message.slice(0, 200));
+    }
   }
   return { chats, newPosts, errors };
 }

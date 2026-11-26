@@ -24,6 +24,14 @@ describe("hotScore", () => {
     const r = score("bloqueadores a luca en lider", { reactions: 25, replies: 12 });
     expect(r.score).toBeGreaterThanOrEqual(HOT_LEVELS[2].minScore);
   });
+  it("una conversación sin precio, descuento ni link no es oferta aunque tenga respuestas", () => {
+    const r = score("me causa gracia que paguen 5 mil por un grupo vip", { replies: 7, reactions: 10, buzz: { count: 6, word: "vip" } });
+    expect(r.score).toBe(0);
+  });
+  it("respuestas en un mensaje con link sí suman", () => {
+    const r = score("miren esto", { replies: 10, hasLink: true });
+    expect(r.reasons).toContain("10 respuestas");
+  });
   it("palabras del usuario (sin tildes)", () => {
     expect(score("Está tiradísimo el café", {}, ["tiradisimo"]).reasons.join()).toMatch(/tiradisimo/);
     expect(score("Está tiradísimo el café").reasons.join()).not.toMatch(/tiradisimo/);

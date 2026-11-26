@@ -10,7 +10,8 @@
     "smoke": "tsx --use-system-ca src/smoke.ts",
     "typecheck": "tsc -p tsconfig.json",
     "radar:once": "tsx --use-system-ca src/radar-once.ts",
-    "telegram:login": "tsx --use-system-ca src/telegram-login.ts"
+    "telegram:login": "tsx --use-system-ca src/telegram-login.ts",
+    "radar:live": "tsx --use-system-ca src/radar-live.ts"
   },
   "dependencies": {
     "@rastreador/core": "workspace:*",

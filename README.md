@@ -174,8 +174,13 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
 - **Filtros por categoría** (Radar → Qué avisarte): "Nunca avisarme de" (p. ej. Ropa interior), "Avisarme solo de"
   y palabras bloqueadas. Se aplican a destacadas y errores de precio; lo que sigues y tus palabras a vigilar llegan igual.
   Las categorías se detectan por palabras del mensaje (`packages/core/src/radar/categories.ts`).
-- **Frecuencia:** el workflow `Radar` corre cada hora (`pnpm radar:once`, liviano). En tu PC puedes
-  correrlo más seguido. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
+- **Frecuencia:** el workflow `Radar` corre cada 30 min (`pnpm radar:once`). Si tu PC está prendido, el
+  **radar del PC** pregunta cada minuto por mensajes nuevos y avisa al tiro; mientras está activo (latido en
+  `/api/health` → `radarLive`), GitHub se salta sus pasadas para no gastar minutos.
+  - Usa su propia sesión: `pnpm telegram:login --live` (guarda `TG_SESSION_LIVE`, que NO se sube a GitHub).
+  - Arranque automático: acceso directo a `scriptsadar-live-start.vbs` en la carpeta Inicio (Win+R → `shell:startup`).
+    Corre oculto, se reinicia solo si se cae y deja registro en `%LOCALAPPDATA%\Rastreadoradar-live.log`.
+  - Telegram no "empuja" los mensajes de grupos grandes a esta cuenta, por eso pregunta cada 60 s en vez de escuchar. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 
 ## Extensión de navegador (Falabella, Sodimac, Tottus, Paris, Ripley, Lider, PC Factory)
 

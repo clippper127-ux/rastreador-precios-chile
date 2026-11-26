@@ -55,6 +55,8 @@ export interface HotInput {
   historicalMin?: number | null;
   /** Conversación en el chat: cuántos otros mensajes hablan de lo mismo en ±3 h. */
   buzz?: { count: number; word: string } | null;
+  /** El mensaje trae un link para comprar. */
+  hasLink?: boolean;
 }
 
 export interface HotResult {
@@ -109,18 +111,21 @@ export function hotScore(p: HotInput, extraWords: string[] = []): HotResult {
     reasons.push(`dice "${hits.slice(0, 2).join('", "')}"`);
   }
 
-  const r = p.reactions ?? 0;
+  // Reacciones, respuestas y conversación solo cuentan si el mensaje parece una oferta
+  // (precio, descuento, link o palabra de oferta): si no, una charla animada pasaría por oferta.
+  const looksLikeDeal = p.prices.length > 0 || d > 0 || !!p.hasLink || hits.length > 0 || p.flags.includes("error_precio");
+  const r = looksLikeDeal ? (p.reactions ?? 0) : 0;
   if (r >= 8) {
     score += r >= 30 ? 3 : r >= 15 ? 2 : 1;
     reasons.push(`${r} reacciones`);
   }
-  const rep = p.replies ?? 0;
+  const rep = looksLikeDeal ? (p.replies ?? 0) : 0;
   if (rep >= 3) {
     score += rep >= 10 ? 3 : rep >= 5 ? 2 : 1;
     reasons.push(`${rep} respuestas`);
   }
 
-  if (p.buzz && p.buzz.count >= 4) {
+  if (looksLikeDeal && p.buzz && p.buzz.count >= 4) {
     // Señal fuerte en chats: varias personas comentando el mismo producto en poco rato.
     score += p.buzz.count >= 7 ? 5 : 4;
     reasons.push(`${p.buzz.count} mensajes hablando de "${p.buzz.word}"`);
@@ -149,7 +154,7 @@ export function dealFingerprint(text: string, storeUrls: string[]): string {
 
 /** Palabras de chat que no dicen de qué producto se habla. */
 const CHAT_STOP = new Set(
-  "hola gracias alguien sabe tienen tiene donde cuando ahora todavia aun igual pero porque para como esta estan esto esta este eso cual cuales mismo misma hace hacer sale salio llego llegan compre compra comprar pedido pedi precio precios oferta ofertas descuento link tienda tiendas envio despacho stock queda quedan otra otro todos todas nada algo mucho muy bien buen buena malo mala jaja jajaja jajajaja creo parece puede pueden sirve dale bueno chile pesos lucas luca black friday cyber falabella paris ripley lider tottus jumbo santa isabel sodimac easy hites abcdin lapolar polar pcfactory mercadolibre mercado libre aliexpress amazon temu shein preunic salcobrand cruzverde ahumada knasta solotodo unimarc walmart".split(" "),
+  "hola gracias alguien sabe tienen tiene donde cuando ahora todavia aun igual pero porque para como esta estan esto esta este eso cual cuales mismo misma hace hacer sale salio llego llegan compre compra comprar pedido pedi precio precios oferta ofertas descuento link tienda tiendas envio despacho stock queda quedan otra otro todos todas nada algo mucho muy bien buen buena malo mala jaja jajaja jajajaja creo parece puede pueden sirve dale bueno chile pesos lucas luca black friday cyber grupo grupos vip canal comunidad admin admins telegram whatsapp mensaje mensajes gente dscto dcto descto historial anterior anteriore precio off falabella paris ripley lider tottus jumbo santa isabel sodimac easy hites abcdin lapolar polar pcfactory mercadolibre mercado libre aliexpress amazon temu shein preunic salcobrand cruzverde ahumada knasta solotodo unimarc walmart".split(" "),
 );
 
 function topicWords(text: string): Set<string> {

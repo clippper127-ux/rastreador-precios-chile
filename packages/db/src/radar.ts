@@ -97,7 +97,8 @@ export async function storePosts(db: Database, channelId: string, posts: RawPost
   const inserted: number[] = [];
   for (const p of posts) {
     // Resolver como máximo 3 links por mensaje (acortadores/afiliados → ficha de la tienda).
-    const resolved = await Promise.all(p.links.slice(0, 3).map((l) => resolveLink(l)));
+    // Solo se resuelven links útiles (no imágenes ni buscadores): cada uno es una request.
+    const resolved = await Promise.all(buyLinks(p.links, []).slice(0, 3).map((l) => resolveLink(l)));
     const links = storeLinks([...resolved, ...p.links]);
     const a = analyzeDealText(p.text);
     const rows = await db
@@ -235,6 +236,13 @@ export async function notifyDealMatches(db: Database, appUrl: string, transport:
 
   let sent = 0;
   for (const { match, post, channel, profile } of rows) {
+    // Se "reserva" el aviso antes de mandarlo: si el PC y GitHub corren a la vez, solo uno lo envía.
+    const claimed = await db
+      .update(schema.dealMatches)
+      .set({ notifiedAt: new Date() })
+      .where(and(eq(schema.dealMatches.userId, match.userId), eq(schema.dealMatches.postId, match.postId), isNull(schema.dealMatches.notifiedAt)))
+      .returning({ postId: schema.dealMatches.postId });
+    if (!claimed.length) continue;
     const store = (post.storeLinks as { url: string; storeName: string }[]).map((l) => `🛒 ${l.storeName}: ${l.url}`);
     // Si no reconocemos la tienda, igual va el link del mensaje para comprar.
     const links = store.length ? store : buyLinks(post.links, []).slice(0, 2).map((u) => `🛒 Comprar: ${u}`);
@@ -260,13 +268,13 @@ export async function notifyDealMatches(db: Database, appUrl: string, transport:
       }
       sent++;
     } catch {
-      // Se reintenta en la próxima pasada (hasta que pasen 2 días).
+      // Se libera para reintentar en la próxima pasada (hasta que pasen 2 días).
+      await db
+        .update(schema.dealMatches)
+        .set({ notifiedAt: null })
+        .where(and(eq(schema.dealMatches.userId, match.userId), eq(schema.dealMatches.postId, match.postId)));
       continue;
     }
-    await db
-      .update(schema.dealMatches)
-      .set({ notifiedAt: new Date() })
-      .where(and(eq(schema.dealMatches.userId, match.userId), eq(schema.dealMatches.postId, match.postId)));
   }
   return sent;
 }
@@ -360,22 +368,23 @@ const HOT_WINDOW_MS = 6 * 3_600_000;
 /** Actualiza reacciones y respuestas de mensajes recientes ya guardados (las ofertas buenas "explotan" después). */
 export async function updateEngagement(db: Database, channelId: string, posts: RawPost[]): Promise<void> {
   const since = Date.now() - HOT_WINDOW_MS;
-  for (const p of posts) {
-    if (p.postedAt.getTime() < since) continue;
-    const bl = buyLinks(p.links, p.links);
+  const recent = posts.filter((p) => p.postedAt.getTime() >= since);
+  if (!recent.length) return;
+  // Una sola lectura y solo se actualiza lo que cambió (antes: un UPDATE por mensaje, lento desde GitHub).
+  const rows = await db
+    .select({ externalId: schema.dealPosts.externalId, reactions: schema.dealPosts.reactions, replies: schema.dealPosts.replies, links: schema.dealPosts.links })
+    .from(schema.dealPosts)
+    .where(and(eq(schema.dealPosts.channelId, channelId), inArray(schema.dealPosts.externalId, recent.map((p) => p.id))));
+  const byId = new Map(rows.map((r) => [r.externalId, r]));
+  for (const p of recent) {
+    const cur = byId.get(p.id);
+    if (!cur) continue;
+    // Solo completa links si el mensaje no tenía (no pisa los ya resueltos al guardarlo).
+    const bl = cur.links.length ? [] : buyLinks(p.links, p.links);
+    if (cur.reactions === (p.reactions ?? 0) && cur.replies === (p.replies ?? 0) && !bl.length) continue;
     await db
       .update(schema.dealPosts)
-      .set({
-        reactions: p.reactions ?? 0,
-        replies: p.replies ?? 0,
-        // Solo completa links si el mensaje no tenía (no pisa los ya resueltos al guardarlo).
-        ...(bl.length > 0 && {
-          links: sql`case when cardinality(${schema.dealPosts.links}) = 0 then array[${sql.join(
-            bl.map((u) => sql`${u}`),
-            sql`, `,
-          )}]::text[] else ${schema.dealPosts.links} end`,
-        }),
-      })
+      .set({ reactions: p.reactions ?? 0, replies: p.replies ?? 0, ...(bl.length > 0 && { links: bl }) })
       .where(and(eq(schema.dealPosts.channelId, channelId), eq(schema.dealPosts.externalId, p.id)));
   }
 }
@@ -469,6 +478,7 @@ export async function scoreHotPosts(db: Database): Promise<number> {
             replies: p.replies,
             historicalMin: mins.length ? Math.min(...mins) : null,
             buzz: buzz.get(p.id),
+            hasLink: p.links.length > 0 || (p.storeLinks as unknown[]).length > 0,
           },
           profile.radarHotWords,
         );

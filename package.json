@@ -20,6 +20,7 @@
     "db:verify": "pnpm --filter @rastreador/db verify",
     "radar:once": "pnpm --filter @rastreador/worker radar:once",
     "telegram:login": "pnpm --filter @rastreador/worker telegram:login",
+    "radar:live": "pnpm --filter @rastreador/worker radar:live",
     "db:admin": "pnpm --filter @rastreador/db admin"
   },
   "devDependencies": {
