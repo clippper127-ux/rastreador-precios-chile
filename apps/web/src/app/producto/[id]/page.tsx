@@ -245,7 +245,12 @@ function StoreRow({ listing: l, fake }: { listing: ListingView; fake?: string })
         </p>
       </div>
       <div className="flex items-center justify-between gap-4 sm:justify-end">
-        {!l.pending && <PriceBlock prices={toPrices(l)} className="sm:items-end" />}
+        {!l.pending && (
+          <div className="flex flex-col sm:items-end">
+            <PriceBlock prices={toPrices(l)} className="sm:items-end" />
+            {l.unitPrice && <span className="tabular mt-0.5 text-xs text-muted-foreground">{l.unitPrice}</span>}
+          </div>
+        )}
         <Button asChild variant="outline" size="sm">
           <a href={l.url} target="_blank" rel="noopener noreferrer">
             {stale ? "Abrir para actualizar" : "Ver en tienda"}

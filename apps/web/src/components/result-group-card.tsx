@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCLP, measureLabel, parseListingUrl, type ResultGroup } from "@rastreador/core";
+import { formatCLP, formatUnitPrice, measureLabel, parseListingUrl, unitPriceFromTitle, type ResultGroup } from "@rastreador/core";
 import { CreditCard, ExternalLink, Link2, Loader2, Plus, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { followGroup } from "@/app/actions";
@@ -129,6 +129,9 @@ export function ResultGroupCard({ group, storeNames }: { group: ResultGroup; sto
               </div>
               <div className="text-right">
                 <p className="tabular text-sm font-semibold">{formatCLP(i.bestNoCard)}</p>
+                {unitOf(i.title ?? group.title, i.bestNoCard) && (
+                  <p className="tabular text-xs text-muted-foreground">{unitOf(i.title ?? group.title, i.bestNoCard)}</p>
+                )}
                 {i.priceOffer != null && i.priceNormal != null && (
                   <p className="tabular text-xs text-muted-foreground line-through">{formatCLP(i.priceNormal)}</p>
                 )}
@@ -247,4 +250,9 @@ export function ResultGroupCard({ group, storeNames }: { group: ResultGroup; sto
       </div>
     </article>
   );
+}
+
+function unitOf(title: string, price: number | undefined): string | undefined {
+  const u = unitPriceFromTitle(title, price);
+  return u && formatUnitPrice(u);
 }

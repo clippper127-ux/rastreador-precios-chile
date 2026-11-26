@@ -46,6 +46,7 @@ export function WatchCard({ card }: { card: WatchCardData }) {
         ) : (
           <div>
             <p className="tabular text-2xl font-semibold tracking-tight">{formatCLP(card.bestNoCard)}</p>
+            {card.best?.unitPrice && <p className="tabular text-xs text-muted-foreground">{card.best.unitPrice}</p>}
             {showCard && (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-card-price">
                 <CreditCard aria-hidden className="size-3.5" />

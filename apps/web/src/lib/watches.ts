@@ -4,6 +4,8 @@ import {
   bestPriceWithCard,
   buildSegments,
   computeStats,
+  formatUnitPrice,
+  unitPriceFromTitle,
   type PriceStats,
   type StockStatus,
 } from "@rastreador/core";
@@ -34,6 +36,8 @@ export interface ListingView {
   storeStatus: string;
   bestNoCard?: number;
   bestWithCard?: number;
+  /** Precio por kg, L o unidad según el título ("$2.997/L"), si tiene medida. */
+  unitPrice?: string;
   pending: boolean;
 }
 
@@ -58,6 +62,11 @@ export interface WatchCard {
   pending: boolean;
   createdAt: Date;
   insights: Insights;
+}
+
+function unitLabel(title: string, price: number | undefined): string | undefined {
+  const u = unitPriceFromTitle(title, price);
+  return u && formatUnitPrice(u);
 }
 
 function toView(l: typeof schema.listings.$inferSelect, stores: Map<string, typeof schema.stores.$inferSelect>): ListingView {
@@ -86,6 +95,7 @@ function toView(l: typeof schema.listings.$inferSelect, stores: Map<string, type
     storeStatus: store?.status ?? "ok",
     bestNoCard: inStock ? bestPriceNoCard(prices) : undefined,
     bestWithCard: inStock ? bestPriceWithCard(prices) : undefined,
+    unitPrice: unitLabel(l.title, inStock ? bestPriceNoCard(prices) : undefined),
     pending: l.lastCheckedAt == null,
   };
 }
