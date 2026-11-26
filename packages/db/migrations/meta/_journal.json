@@ -78,6 +78,13 @@
       "when": 1795652339591,
       "tag": "0010_radar_hot",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795654639642,
+      "tag": "0011_radar_filters",
+      "breakpoints": true
     }
   ]
 }

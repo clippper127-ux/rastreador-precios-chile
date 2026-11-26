@@ -82,6 +82,10 @@ export const profiles = pgTable("profiles", {
   radarHotLevel: smallint("radar_hot_level").notNull().default(2),
   /** Palabras extra que suman puntaje a una oferta ("tiradísimo", "a luca"...). */
   radarHotWords: text("radar_hot_words").array().notNull().default(sql`'{}'::text[]`),
+  /** Filtros para destacadas y errores de precio: solo estas categorías (vacío = todas), nunca estas, palabras bloqueadas. */
+  radarCatsInclude: text("radar_cats_include").array().notNull().default(sql`'{}'::text[]`),
+  radarCatsExclude: text("radar_cats_exclude").array().notNull().default(sql`'{}'::text[]`),
+  radarBlockWords: text("radar_block_words").array().notNull().default(sql`'{}'::text[]`),
   emailAlerts: boolean("email_alerts").notNull().default(true),
   weeklyDigest: boolean("weekly_digest").notNull().default(false),
   /** Hash SHA-256 del token de la extensión; el token en claro solo se muestra una vez. */

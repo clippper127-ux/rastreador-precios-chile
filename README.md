@@ -171,6 +171,9 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
   "regalado" o "corran" (más las tuyas), reacciones y respuestas, varias personas hablando del mismo producto en un chat
   (±3 h) y precio bajo el mínimo histórico conocido. Sensibilidad Pocas/Normal/Muchas con tope de 5/10/20 avisos al día,
   máx. 2 por grupo cada 6 h, y la misma oferta en varios grupos llega una vez.
+- **Filtros por categoría** (Radar → Qué avisarte): "Nunca avisarme de" (p. ej. Ropa interior), "Avisarme solo de"
+  y palabras bloqueadas. Se aplican a destacadas y errores de precio; lo que sigues y tus palabras a vigilar llegan igual.
+  Las categorías se detectan por palabras del mensaje (`packages/core/src/radar/categories.ts`).
 - **Frecuencia:** el workflow `Radar` corre cada hora (`pnpm radar:once`, liviano). En tu PC puedes
   correrlo más seguido. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 

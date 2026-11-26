@@ -1,5 +1,6 @@
 "use server";
 
+import { DEAL_CATEGORY_IDS } from "@rastreador/core";
 import { schema } from "@rastreador/db";
 import { httpTransport } from "@rastreador/db/alerts";
 import { notifyDealMatches, pollPublicChannels, scoreHotPosts, subscribeChannel } from "@rastreador/db/radar";
@@ -52,6 +53,7 @@ export async function saveRadarPrefs(_prev: RadarMsg, form: FormData): Promise<R
       .map((k) => k.trim().replace(/\s+/g, " ").slice(0, 60))
       .filter((k) => k.length >= min)
       .slice(0, max);
+  const cats = (name: string) => form.getAll(name).map(String).filter((c) => (DEAL_CATEGORY_IDS as string[]).includes(c));
   const level = Number(form.get("hotLevel"));
   const prefs = {
     radarKeywords: list("keywords", 3, 30),
@@ -59,7 +61,12 @@ export async function saveRadarPrefs(_prev: RadarMsg, form: FormData): Promise<R
     radarHotLevel: [0, 1, 2, 3].includes(level) ? level : 2,
     // Palabras que suman puntaje (2+ caracteres: también sirve "🔥" o "-80%").
     radarHotWords: list("hotWords", 2, 40),
+    radarCatsInclude: cats("catInclude"),
+    // "Nunca" gana si una categoría quedó marcada en las dos listas.
+    radarCatsExclude: cats("catExclude"),
+    radarBlockWords: list("blockWords", 2, 40),
   };
+  prefs.radarCatsInclude = prefs.radarCatsInclude.filter((c) => !prefs.radarCatsExclude.includes(c));
   await db()
     .insert(schema.profiles)
     .values({ id: uid, ...prefs })

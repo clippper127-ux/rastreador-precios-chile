@@ -133,7 +133,8 @@ export function matchDeal(
   post: { text: string; storeUrls: string[]; flags: DealFlag[] },
   interests: Interest[],
   keywords: string[],
-  opts: { priceErrors: boolean } = { priceErrors: true },
+  /** blocked: el mensaje cae en una categoría o palabra filtrada (no se avisa como error de precio). */
+  opts: { priceErrors: boolean; blocked?: boolean } = { priceErrors: true },
 ): DealMatch | null {
   const reasons: string[] = [];
   const productIds = new Set<string>();
@@ -160,9 +161,11 @@ export function matchDeal(
     const kq = parseQuery(k);
     if (kq.tokens.length && relevance(kq, post.text) === 1) reasons.push(`Contiene "${k}"`);
   }
-  if (opts.priceErrors && post.flags.includes("error_precio")) reasons.push("Posible error de precio");
+  if (opts.priceErrors && !opts.blocked && post.flags.includes("error_precio")) reasons.push("Posible error de precio");
 
   return reasons.length ? { reasons, productIds: [...productIds] } : null;
 }
 
 export * from "./hot";
+
+export * from "./categories";

@@ -2,6 +2,7 @@
 
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { useActionState, useTransition, useState } from "react";
+import { DEAL_CATEGORIES, DEAL_CATEGORY_IDS } from "@rastreador/core";
 import { addChannel, checkRadarNow, saveRadarPrefs, type RadarMsg } from "@/app/radar-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,11 +46,17 @@ export function RadarPrefsForm({
   priceErrors,
   hotLevel,
   hotWords,
+  catsInclude,
+  catsExclude,
+  blockWords,
 }: {
   keywords: string[];
   priceErrors: boolean;
   hotLevel: number;
   hotWords: string[];
+  catsInclude: string[];
+  catsExclude: string[];
+  blockWords: string[];
 }) {
   const [state, action, pending] = useActionState<RadarMsg, FormData>(saveRadarPrefs, undefined);
   return (
@@ -114,6 +121,30 @@ export function RadarPrefsForm({
           preciazo, precio histórico, quedan pocos, a luca, 🔥🔥…
         </p>
       </fieldset>
+      <fieldset className="flex flex-col gap-3 border-t">
+        <legend className="sr-only">Filtros por categoría</legend>
+        <p className="pt-3 text-sm font-medium">Filtros por categoría</p>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Se aplican a las ofertas destacadas y a los errores de precio. Lo que sigues y tus palabras a vigilar te llegan igual.
+        </p>
+        <CategoryChips name="catExclude" title="Nunca avisarme de" checked={catsExclude} tone="danger" />
+        <CategoryChips name="catInclude" title="Avisarme solo de (vacío = todas)" checked={catsInclude} tone="brand" />
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="blockWords">Palabras que nunca quiero ver</Label>
+          <textarea
+            id="blockWords"
+            name="blockWords"
+            rows={2}
+            defaultValue={blockWords.join(", ")}
+            placeholder="Ej: crocs, pañal, vino"
+            aria-describedby="blockWords-hint"
+            className="rounded-xl border border-input bg-card px-4 py-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/15"
+          />
+          <p id="blockWords-hint" className="text-xs text-muted-foreground">
+            Separadas por coma, sin importar tildes. Para lo que las categorías no alcanzan a cubrir.
+          </p>
+        </div>
+      </fieldset>
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" disabled={pending}>
           Guardar
@@ -134,6 +165,29 @@ export function CheckNowButton() {
         Revisar ahora
       </Button>
       <Msg m={msg} />
+    </div>
+  );
+}
+
+function CategoryChips({ name, title, checked, tone }: { name: string; title: string; checked: string[]; tone: "brand" | "danger" }) {
+  const on = tone === "danger" ? "has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger" : "has-[:checked]:border-brand has-[:checked]:bg-brand/10 has-[:checked]:text-brand";
+  return (
+    <div role="group" aria-label={title} className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{title}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {DEAL_CATEGORY_IDS.map((c) => (
+          <label
+            key={c}
+            className={`group cursor-pointer rounded-full border px-3 py-1 text-xs font-medium select-none has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-ring/15 ${on}`}
+          >
+            <input type="checkbox" name={name} value={c} defaultChecked={checked.includes(c)} className="sr-only" />
+            <span aria-hidden className="mr-1 hidden group-has-[:checked]:inline">
+              {tone === "danger" ? "✕" : "✓"}
+            </span>
+            {DEAL_CATEGORIES[c].label}
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

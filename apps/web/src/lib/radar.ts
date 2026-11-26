@@ -1,4 +1,5 @@
 import "server-only";
+import { DEAL_CATEGORIES, dealCategories } from "@rastreador/core";
 import { schema } from "@rastreador/db";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "./db";
@@ -25,6 +26,7 @@ export interface RadarPost {
   discountPct: number | null;
   flags: string[];
   reasons: string[] | null;
+  categories: string[];
 }
 
 export async function getRadar(userId: string) {
@@ -73,6 +75,7 @@ export async function getRadar(userId: string) {
     discountPct: post.discountPct,
     flags: post.flags,
     reasons: match?.reasons ?? null,
+    categories: dealCategories(post.text).map((c) => DEAL_CATEGORIES[c].label),
   }));
 
   const profile = await d.query.profiles.findFirst({ where: eq(schema.profiles.id, userId) });
@@ -83,6 +86,9 @@ export async function getRadar(userId: string) {
     priceErrors: profile?.radarPriceErrors ?? true,
     hotLevel: profile?.radarHotLevel ?? 2,
     hotWords: profile?.radarHotWords ?? [],
+    catsInclude: profile?.radarCatsInclude ?? [],
+    catsExclude: profile?.radarCatsExclude ?? [],
+    blockWords: profile?.radarBlockWords ?? [],
     telegramLinked: !!profile?.telegramChatId,
   };
 }

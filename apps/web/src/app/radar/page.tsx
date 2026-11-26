@@ -89,12 +89,17 @@ export default async function RadarPage() {
                   </ul>
                 )}
                 <p className="mt-2 line-clamp-6 text-sm whitespace-pre-line">{p.text || "(sin texto)"}</p>
-                {(p.prices.length > 0 || p.flags.length > 0 || p.discountPct) && (
+                {(p.prices.length > 0 || p.flags.length > 0 || p.discountPct || p.categories.length > 0) && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {p.flags.map((f) => (
                       <Badge key={f} variant={f === "error_precio" ? "caution" : "outline"}>
                         {f === "error_precio" && <AlertTriangle aria-hidden />}
                         {FLAG_LABEL[f] ?? f}
+                      </Badge>
+                    ))}
+                    {p.categories.map((c) => (
+                      <Badge key={c} variant="outline" className="text-muted-foreground">
+                        {c}
                       </Badge>
                     ))}
                     {p.discountPct != null && <Badge variant="outline">−{p.discountPct}%</Badge>}
@@ -182,7 +187,12 @@ export default async function RadarPage() {
               <CardTitle className="text-base">Qué avisarte</CardTitle>
             </CardHeader>
             <CardContent>
-              <RadarPrefsForm keywords={r.keywords} priceErrors={r.priceErrors} hotLevel={r.hotLevel} hotWords={r.hotWords} />
+              <RadarPrefsForm keywords={r.keywords} priceErrors={r.priceErrors} hotLevel={r.hotLevel}
+                hotWords={r.hotWords}
+                catsInclude={r.catsInclude}
+                catsExclude={r.catsExclude}
+                blockWords={r.blockWords}
+              />
             </CardContent>
           </Card>
         </aside>

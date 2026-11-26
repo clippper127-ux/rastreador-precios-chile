@@ -1,5 +1,6 @@
 import {
   analyzeDealText,
+  blockedByFilters,
   channelHandle,
   chatBuzz,
   dealFingerprint,
@@ -138,6 +139,12 @@ export async function pollPublicChannels(db: Database): Promise<{ channels: numb
   return { channels: channels.length, newPosts, errors };
 }
 
+type Filters = { include: string[]; exclude: string[]; blockWords: string[] };
+
+function filtersOf(p: typeof schema.profiles.$inferSelect | null | undefined): Filters {
+  return { include: p?.radarCatsInclude ?? [], exclude: p?.radarCatsExclude ?? [], blockWords: p?.radarBlockWords ?? [] };
+}
+
 async function interestsOf(db: Database, userId: string): Promise<Interest[]> {
   const rows = await db.execute<{ product_id: string; name: string; urls: string[] | null }>(sql`
     select p.id as product_id, p.canonical_name as name, array_agg(l.url) filter (where l.url is not null) as urls
@@ -154,7 +161,7 @@ async function interestsOf(db: Database, userId: string): Promise<Interest[]> {
 export async function matchPosts(db: Database, postIds: number[]): Promise<number> {
   if (!postIds.length) return 0;
   const posts = await db.select().from(schema.dealPosts).where(inArray(schema.dealPosts.id, postIds));
-  const cache = new Map<string, { interests: Interest[]; keywords: string[]; priceErrors: boolean }>();
+  const cache = new Map<string, { interests: Interest[]; keywords: string[]; priceErrors: boolean; filters: Filters }>();
   let matched = 0;
 
   for (const post of posts) {
@@ -171,6 +178,7 @@ export async function matchPosts(db: Database, postIds: number[]): Promise<numbe
           interests: await interestsOf(db, sub.userId),
           keywords: profile?.radarKeywords ?? [],
           priceErrors: profile?.radarPriceErrors ?? true,
+          filters: filtersOf(profile),
         };
         cache.set(sub.userId, ctx);
       }
@@ -178,7 +186,7 @@ export async function matchPosts(db: Database, postIds: number[]): Promise<numbe
         { text: post.text, storeUrls: (post.storeLinks as { url: string }[]).map((l) => l.url), flags: post.flags as never },
         ctx.interests,
         ctx.keywords,
-        { priceErrors: ctx.priceErrors },
+        { priceErrors: ctx.priceErrors, blocked: blockedByFilters(post.text, ctx.filters).blocked },
       );
       if (!m) continue;
       const rows = await db
@@ -429,7 +437,7 @@ export async function scoreHotPosts(db: Database): Promise<number> {
         );
         return { p, ...r };
       })
-      .filter((c) => c.score >= level.minScore)
+      .filter((c) => c.score >= level.minScore && !blockedByFilters(c.p.text, filtersOf(profile)).blocked)
       .sort((a, b) => b.score - a.score);
 
     for (const c of candidates) {
