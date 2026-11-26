@@ -542,6 +542,18 @@ export async function saveCoupons(db: Database, postId: number, channelId: strin
   if (!coupons.length) return 0;
   const store = detectStore(text, links) ?? null;
   for (const c of coupons) {
+    if (store) {
+      // El mismo código visto antes sin tienda: ahora sabemos de cuál es (se combinan).
+      await db.delete(schema.dealCoupons).where(and(eq(schema.dealCoupons.code, c.code), eq(schema.dealCoupons.storeKey, "")));
+    } else {
+      // Sin tienda en este mensaje, pero el código ya se conoce con tienda: se actualiza ese.
+      const known = await db
+        .update(schema.dealCoupons)
+        .set({ lastSeenAt: new Date() })
+        .where(and(eq(schema.dealCoupons.code, c.code), sql`${schema.dealCoupons.storeKey} <> ''`))
+        .returning({ id: schema.dealCoupons.id });
+      if (known.length) continue;
+    }
     await db
       .insert(schema.dealCoupons)
       .values({ code: c.code, store, storeKey: store ?? "", benefit: c.benefit ?? null, minPurchase: c.minPurchase ?? null, postId, channelId })
