@@ -397,6 +397,8 @@ export const dealPosts = pgTable(
     text: text("text").notNull(),
     /** Fichas de tiendas soportadas encontradas en el mensaje: [{url, storeId, storeName}]. */
     storeLinks: jsonb("store_links").notNull().default(sql`'[]'::jsonb`),
+    /** Todos los links del mensaje (también de tiendas no soportadas), ya resueltos si venían acortados. */
+    links: text("links").array().notNull().default(sql`'{}'::text[]`),
     prices: integer("prices").array().notNull().default(sql`'{}'::integer[]`),
     discountPct: integer("discount_pct"),
     flags: text("flags").array().notNull().default(sql`'{}'::text[]`),

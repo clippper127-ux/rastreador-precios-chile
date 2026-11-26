@@ -72,6 +72,27 @@ export async function subscribeChannel(db: Database, userId: string, input: stri
 }
 
 /** Guarda mensajes nuevos (resuelve links acortados, detecta tiendas, precios y señales). Devuelve los ids insertados. */
+/** Links para comprar: sin imágenes, buscadores ni Telegram; abre los de afiliados (?dl=, ?url=). Máx. 5. */
+export function buyLinks(resolved: string[], raw: string[]): string[] {
+  const out: string[] = [];
+  for (let u of [...resolved, ...raw]) {
+    if (!/^https?:\/\//i.test(u)) continue;
+    try {
+      const url = new URL(u);
+      const inner = ["dl", "url", "u", "to", "redirect"].map((k) => url.searchParams.get(k)).find((v) => v && /^https?:\/\//i.test(v));
+      if (inner) u = inner;
+      const h = new URL(u);
+      const host = h.hostname.toLowerCase();
+      if (/^(www\.)?(t\.me|telegram\.me)$|(^|\.)google\.[a-z.]+$/.test(host)) continue;
+      if (/\.(jpe?g|png|gif|webp|avif|svg|mp4)$/i.test(h.pathname) || /(^|\.)(cdn|img|images|static|assets)|vtexassets|cdn\.shopify|cloudfront|mlstatic/.test(host) || /\/(files|arquivos)\//.test(h.pathname)) continue;
+    } catch {
+      continue;
+    }
+    if (!out.includes(u)) out.push(u);
+  }
+  return out.slice(0, 5);
+}
+
 export async function storePosts(db: Database, channelId: string, posts: RawPost[]): Promise<number[]> {
   const inserted: number[] = [];
   for (const p of posts) {
@@ -92,6 +113,7 @@ export async function storePosts(db: Database, channelId: string, posts: RawPost
         flags: a.flags,
         reactions: p.reactions ?? 0,
         replies: p.replies ?? 0,
+        links: buyLinks(resolved, p.links),
         fingerprint: dealFingerprint(p.text, links.map((l) => l.url)),
       })
       .onConflictDoNothing()
@@ -213,7 +235,10 @@ export async function notifyDealMatches(db: Database, appUrl: string, transport:
 
   let sent = 0;
   for (const { match, post, channel, profile } of rows) {
-    const links = (post.storeLinks as { url: string; storeName: string }[]).map((l) => `${l.storeName}: ${l.url}`);
+    const store = (post.storeLinks as { url: string; storeName: string }[]).map((l) => `🛒 ${l.storeName}: ${l.url}`);
+    // Si no reconocemos la tienda, igual va el link del mensaje para comprar.
+    const links = store.length ? store : buyLinks(post.links, []).slice(0, 2).map((u) => `🛒 Comprar: ${u}`);
+    const original = channel.handle ? `💬 Mensaje original: https://t.me/${channel.handle}/${post.externalId}` : "";
     const text = [
       `📣 ${channel.title ?? "Radar"}`,
       ...match.reasons.map((r) => `• ${r}`),
@@ -221,6 +246,7 @@ export async function notifyDealMatches(db: Database, appUrl: string, transport:
       "",
       post.text.slice(0, 600),
       ...(links.length ? ["", ...links] : []),
+      original,
       "",
       `Radar: ${appUrl.replace(/\/+$/, "")}/radar`,
     ]
@@ -335,10 +361,21 @@ const HOT_WINDOW_MS = 6 * 3_600_000;
 export async function updateEngagement(db: Database, channelId: string, posts: RawPost[]): Promise<void> {
   const since = Date.now() - HOT_WINDOW_MS;
   for (const p of posts) {
-    if (p.postedAt.getTime() < since || (!p.reactions && !p.replies)) continue;
+    if (p.postedAt.getTime() < since) continue;
+    const bl = buyLinks(p.links, p.links);
     await db
       .update(schema.dealPosts)
-      .set({ reactions: p.reactions ?? 0, replies: p.replies ?? 0 })
+      .set({
+        reactions: p.reactions ?? 0,
+        replies: p.replies ?? 0,
+        // Solo completa links si el mensaje no tenía (no pisa los ya resueltos al guardarlo).
+        ...(bl.length > 0 && {
+          links: sql`case when cardinality(${schema.dealPosts.links}) = 0 then array[${sql.join(
+            bl.map((u) => sql`${u}`),
+            sql`, `,
+          )}]::text[] else ${schema.dealPosts.links} end`,
+        }),
+      })
       .where(and(eq(schema.dealPosts.channelId, channelId), eq(schema.dealPosts.externalId, p.id)));
   }
 }

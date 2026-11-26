@@ -89,8 +89,9 @@ export async function pollReaderAccount(db: Database, cfg: ReaderConfig): Promis
         newPosts += await ingestReaderChat(db, { chatId, title: d.title ?? d.name ?? "Grupo", handle, broadcast: !d.isGroup }, posts);
         if (state) await updateEngagement(db, `u:${chatId}`, posts.filter((p) => p.id <= state.lastPostId));
         await new Promise((r) => setTimeout(r, 500));
-      } catch {
+      } catch (err) {
         errors++;
+        console.error(`Grupo ${chats}:`, (err as Error).message.slice(0, 200));
       }
     }
   } finally {
