@@ -178,6 +178,11 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
 - **Frecuencia:** el workflow `Radar` corre cada 10 min (repo público) (`pnpm radar:once`). Si tu PC está prendido, el
   **radar del PC** pregunta cada minuto por mensajes nuevos y avisa al tiro; mientras está activo (latido en
   `/api/health` → `radarLive`), GitHub se salta sus pasadas para no gastar minutos.
+  - **Despertador:** GitHub atrasa (o se salta) los cron, así que Supabase lanza el workflow cada 10 min con
+    `pg_cron` + `pg_net` (job `radar-despertador`). Usa un token *fine-grained* de GitHub solo con **Actions: Read and
+    write** sobre este repo, guardado cifrado en Supabase Vault (`gh_dispatch_token`); en `.env` va como
+    `GH_DISPATCH_TOKEN` solo para cargarlo. Si el token vence: regenerarlo en GitHub, pegarlo en `.env` y volver a
+    guardarlo en Vault (`vault.update_secret`).
   - Usa su propia sesión: `pnpm telegram:login --live` (guarda `TG_SESSION_LIVE`, que NO se sube a GitHub).
   - Arranque automático: acceso directo a `scripts
 adar-live-start.vbs` en la carpeta Inicio (Win+R → `shell:startup`).
