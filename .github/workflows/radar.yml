@@ -1,11 +1,11 @@
 name: Radar
 
-# Radar de ofertas de Telegram cada 30 min: lee canales, grupos de la cuenta dedicada y mensajes del bot.
-# Respaldo del radar en tiempo real del PC: si el PC está escuchando (latido < 3 min), la pasada se salta
-# en segundos. Así los minutos gratis (2.000/mes, repo privado) alcanzan.
+# Radar de ofertas de Telegram cada 10 min (repo público: minutos ilimitados). Lee canales, grupos de la
+# cuenta dedicada y mensajes del bot. Si el radar del PC está activo (latido < 3 min), la pasada se salta.
+# GitHub atrasa los cron: un despertador en Supabase (pg_cron) también la lanza por workflow_dispatch.
 on:
   schedule:
-    - cron: "7,37 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 concurrency:

@@ -4,6 +4,7 @@ import { ingestReaderChat, readerChatState, updateEngagement } from "@rastreador
 import { Api, TelegramClient } from "telegram";
 import { LogLevel } from "telegram/extensions/Logger.js";
 import { StringSession } from "telegram/sessions/index.js";
+import { alertVerification, checkReaderHealth } from "./reader-health";
 
 /*
  * Lector de grupos con una cuenta de Telegram DEDICADA (no la personal), vía la API oficial (MTProto).
@@ -111,12 +112,19 @@ export async function readChats(db: Database, client: TelegramClient): Promise<{
   let chats = 0;
   let newPosts = 0;
   let errors = 0;
-  for (const { info, entity } of await listChats(client)) {
+  const token = process.env.TELEGRAM_BOT_TOKEN || undefined;
+  const list = await listChats(client);
+  // Avisos de verificación pendiente, privados de bots y grupos de los que sacaron a la cuenta.
+  await checkReaderHealth(db, client, token, new Set(list.map((c) => c.info.chatId))).catch((err: Error) =>
+    console.error("Revisión de la cuenta:", err.message.slice(0, 200)),
+  );
+  for (const { info, entity } of list) {
     chats++;
     try {
       const state = await readerChatState(db, info.chatId);
       // Se leen los últimos 150 (primera vez: 20, como punto de partida que no se avisa).
       const msgs = (await client.getMessages(entity, { limit: state ? 150 : 20 })).filter((m): m is Api.Message => m instanceof Api.Message);
+      for (const m of msgs) if (m.mentioned) await alertVerification(db, token, info, m);
       const posts = toRawPosts(msgs);
       newPosts += await ingestReaderChat(db, info, posts);
       if (state) await updateEngagement(db, `u:${info.chatId}`, posts.filter((p) => p.id <= state.lastPostId));

@@ -175,7 +175,7 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
 - **Filtros por categoría** (Radar → Qué avisarte): "Nunca avisarme de" (p. ej. Ropa interior), "Avisarme solo de"
   y palabras bloqueadas. Se aplican a destacadas y errores de precio; lo que sigues y tus palabras a vigilar llegan igual.
   Las categorías se detectan por palabras del mensaje (`packages/core/src/radar/categories.ts`).
-- **Frecuencia:** el workflow `Radar` corre cada 30 min (`pnpm radar:once`). Si tu PC está prendido, el
+- **Frecuencia:** el workflow `Radar` corre cada 10 min (repo público) (`pnpm radar:once`). Si tu PC está prendido, el
   **radar del PC** pregunta cada minuto por mensajes nuevos y avisa al tiro; mientras está activo (latido en
   `/api/health` → `radarLive`), GitHub se salta sus pasadas para no gastar minutos.
   - Usa su propia sesión: `pnpm telegram:login --live` (guarda `TG_SESSION_LIVE`, que NO se sube a GitHub).

@@ -4,6 +4,7 @@ import { ingestReaderChat, notifyDealMatches, pollPublicChannels, readerChatStat
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { Api } from "telegram";
 import { env } from "./env";
+import { alertVerification } from "./reader-health";
 import { listChats, readChats, readerClient, toRawPosts, type ChatInfo } from "./telegram-reader";
 
 /** Cada cuánto se pregunta por mensajes nuevos (Telegram no "empuja" los de grupos grandes a esta cuenta). */
@@ -79,6 +80,7 @@ async function main() {
         );
         if (!msgs.length) continue;
         received += msgs.length;
+        for (const m of msgs) if (m.mentioned) await alertVerification(db, env.telegramToken, info, m);
         if (process.env.RADAR_DEBUG) log(`${msgs.length} mensajes en ${info.title.slice(0, 30)}`);
         await ingestReaderChat(db, info, toRawPosts(msgs));
         scheduleNotify();
