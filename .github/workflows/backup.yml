@@ -1,7 +1,8 @@
 name: Respaldo semanal
 
-# pg_dump del esquema public cada domingo. Se guarda como artifact por 30 días.
-# El repo debe ser PRIVADO: en un repo público cualquiera podría descargar este respaldo.
+# pg_dump del esquema public cada domingo, CIFRADO con BACKUP_PASSPHRASE (AES-256, gpg) y guardado como
+# artifact por 30 días. El repo es público: sin la frase, el respaldo descargado no se puede leer.
+# Para restaurar: gpg --decrypt rastreador-FECHA.dump.gpg > rastreador.dump  (pide la frase) → pg_restore.
 on:
   schedule:
     - cron: "40 6 * * 0"
@@ -24,10 +25,13 @@ jobs:
       - name: pg_dump
         run: |
           mkdir -p backup
-          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" --schema=public --no-owner --no-privileges -Fc -f "backup/rastreador-$(date +%F).dump"
+          test -n "$BACKUP_PASSPHRASE" || { echo "Falta el secret BACKUP_PASSPHRASE: no se guarda un respaldo sin cifrar."; exit 1; }
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" --schema=public --no-owner --no-privileges -Fc             | gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-fd 3 3<<<"$BACKUP_PASSPHRASE"               -o "backup/rastreador-$(date +%F).dump.gpg"
+          ls -la backup
         env:
           # Usar la conexión "session pooler" (5432), no la de transacciones.
           DATABASE_URL: ${{ secrets.DATABASE_URL_MIGRATIONS }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
       - uses: actions/upload-artifact@v4
         with:
           name: respaldo-db

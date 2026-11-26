@@ -69,7 +69,8 @@ Reglas: respetar `robots.txt`, User-Agent honesto, nada con login, preferir dato
 - **Worker → GitHub Actions** (repo **privado**): en *Settings → Secrets and variables → Actions* crea los secrets
   `DATABASE_URL` (transaction pooler), `DATABASE_URL_MIGRATIONS` (session pooler, para el respaldo) y,
   si usas Healthchecks.io, `HEALTHCHECK_URL`. El workflow `Worker` corre cada 4 h y se puede lanzar a mano;
-  `Respaldo semanal` guarda un `pg_dump` como artifact por 30 días.
+  `Respaldo semanal` guarda un `pg_dump` **cifrado** (`BACKUP_PASSPHRASE`, AES-256) como artifact por 30 días.
+  Restaurar: `gpg --decrypt rastreador-FECHA.dump.gpg > rastreador.dump` y luego `pg_restore`.
   Para probarlo en tu PC: `pnpm worker:once`. Para una prueba completa sin datos de usuarios: `pnpm --filter @rastreador/worker smoke`.
 - **Extensión:** ver abajo.
 
@@ -178,8 +179,10 @@ Cada mensaje muestra las tiendas detectadas con un botón **Seguir precio** (nad
   **radar del PC** pregunta cada minuto por mensajes nuevos y avisa al tiro; mientras está activo (latido en
   `/api/health` → `radarLive`), GitHub se salta sus pasadas para no gastar minutos.
   - Usa su propia sesión: `pnpm telegram:login --live` (guarda `TG_SESSION_LIVE`, que NO se sube a GitHub).
-  - Arranque automático: acceso directo a `scriptsadar-live-start.vbs` en la carpeta Inicio (Win+R → `shell:startup`).
-    Corre oculto, se reinicia solo si se cae y deja registro en `%LOCALAPPDATA%\Rastreadoradar-live.log`.
+  - Arranque automático: acceso directo a `scripts
+adar-live-start.vbs` en la carpeta Inicio (Win+R → `shell:startup`).
+    Corre oculto, se reinicia solo si se cae y deja registro en `%LOCALAPPDATA%\Rastreador
+adar-live.log`.
   - Telegram no "empuja" los mensajes de grupos grandes a esta cuenta, por eso pregunta cada 60 s en vez de escuchar. Prueba de punta a punta: `pnpm --filter @rastreador/db exec tsx src/smoke-radar.ts`.
 
 ## Extensión de navegador (Falabella, Sodimac, Tottus, Paris, Ripley, Lider, PC Factory)
