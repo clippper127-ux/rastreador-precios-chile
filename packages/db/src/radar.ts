@@ -95,10 +95,18 @@ export function buyLinks(resolved: string[], raw: string[]): string[] {
 
 export async function storePosts(db: Database, channelId: string, posts: RawPost[]): Promise<number[]> {
   const inserted: number[] = [];
-  for (const p of posts) {
-    // Resolver como máximo 3 links por mensaje (acortadores/afiliados → ficha de la tienda).
-    // Solo se resuelven links útiles (no imágenes ni buscadores): cada uno es una request.
-    const resolved = await Promise.all(buyLinks(p.links, []).slice(0, 3).map((l) => resolveLink(l)));
+  // Links resueltos de a 8 mensajes en paralelo (con cientos de mensajes nuevos, de a uno era muy lento).
+  const resolvedAll: string[][] = [];
+  for (let i = 0; i < posts.length; i += 8) {
+    resolvedAll.push(
+      ...(await Promise.all(
+        // Máx. 2 links por mensaje (acortadores/afiliados → ficha de la tienda); solo links útiles, no imágenes.
+        posts.slice(i, i + 8).map((p) => Promise.all(buyLinks(p.links, []).slice(0, 2).map((l) => resolveLink(l)))),
+      )),
+    );
+  }
+  for (const [idx, p] of posts.entries()) {
+    const resolved = resolvedAll[idx] ?? [];
     const links = storeLinks([...resolved, ...p.links]);
     const a = analyzeDealText(p.text);
     const rows = await db

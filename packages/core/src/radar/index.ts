@@ -91,10 +91,13 @@ export function analyzeDealText(text: string): DealAnalysis {
   const prices = [...text.matchAll(/\$\s?(\d{1,3}(?:\.\d{3})+|\d{3,})(?!\d)|(\d{1,3}(?:\.\d{3})+)\s*(?:clp|pesos)/gi)]
     .map((m) => toCLP(m[1] ?? m[2]))
     .filter((p): p is CLP => p != null && p >= 100 && p < 100_000_000);
+  const real = text.match(/(\d{1,2})\s?%\s*real/i);
+  const realPct = real ? Number(real[1]) : undefined;
   const pcts = [...text.matchAll(/(\d{1,2})\s?%/g)].map((m) => Number(m[1])).filter((n) => n > 0 && n < 100);
   return {
     prices: [...new Set(prices)],
-    discountPct: pcts.length ? Math.max(...pcts) : undefined,
+    // "80% OFF (67% Real)": algunos canales calculan el descuento real contra el precio habitual; manda ese.
+    discountPct: realPct ?? (pcts.length ? Math.max(...pcts) : undefined),
     flags: FLAGS.filter(([, re]) => re.test(text)).map(([f]) => f),
   };
 }

@@ -98,7 +98,7 @@ export async function resolveLink(url: string): Promise<string> {
     const u = new URL(current);
     if (u.protocol !== "https:" || /^(localhost|[\d.]+|\[.*\])$/i.test(u.hostname) || !u.hostname.includes(".")) return current;
     try {
-      const res = await fetch(current, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(8_000) });
+      const res = await fetch(current, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(4_000) });
       const loc = res.headers.get("location");
       if (!loc || res.status < 300 || res.status >= 400) return current;
       current = new URL(loc, current).toString();

@@ -85,7 +85,8 @@ export function hotScore(p: HotInput, extraWords: string[] = []): HotResult {
   const d = p.discountPct ?? 0;
   if (d >= 40) {
     // 90 % o más casi siempre es un error de precio (p. ej. $24.990 → $25).
-    score += d >= 90 ? 6 : d >= 80 ? 4 : d >= 60 ? 3 : d >= 50 ? 2 : 1;
+    // 80 %+ ya es oferta destacada por sí sola en sensibilidad Normal.
+    score += d >= 90 ? 6 : d >= 80 ? 5 : d >= 60 ? 3 : d >= 50 ? 2 : 1;
     reasons.push(d >= 90 ? `−${d}% (¿error de precio?)` : `−${d}%`);
   }
 

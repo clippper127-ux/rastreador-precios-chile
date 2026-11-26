@@ -73,3 +73,10 @@ describe("chatBuzz", () => {
 it("99% es probable error de precio y destaca solo", () => {
   expect(score("Dscto. 99% Camisa $48.990 -> $25 (99%)").score).toBeGreaterThanOrEqual(HOT_LEVELS[2].minScore);
 });
+
+it("usa el descuento real cuando el canal lo informa", () => {
+  expect(analyzeDealText("Bolso 🔥 80% OFF (67% Real) | $ 15.990").discountPct).toBe(67);
+});
+it("80% o más destaca en Normal", () => {
+  expect(score("Juego Uno Dscto. 89% $5.490").score).toBeGreaterThanOrEqual(HOT_LEVELS[2].minScore);
+});
