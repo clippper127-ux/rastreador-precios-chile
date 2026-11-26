@@ -18,6 +18,8 @@ export interface RawPost {
   /** Total de reacciones y de respuestas (solo grupos leídos con la cuenta dedicada). */
   reactions?: number;
   replies?: number;
+  /** Id del mensaje al que responde, si es una respuesta. */
+  replyTo?: number;
 }
 
 // ─── Vista web pública de canales: https://t.me/s/<canal> ───────────────────

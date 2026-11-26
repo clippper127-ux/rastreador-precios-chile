@@ -407,6 +407,8 @@ export const dealPosts = pgTable(
     replies: integer("replies").notNull().default(0),
     /** Huella para no avisar la misma oferta publicada en varios grupos. */
     fingerprint: text("fingerprint"),
+    /** Mensaje al que responde (id de Telegram), para saber a qué oferta le piden el link. */
+    replyTo: bigint("reply_to", { mode: "number" }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -436,6 +438,9 @@ export const dealCoupons = pgTable(
       .references(() => dealChannels.id, { onDelete: "cascade" }),
     firstSeenAt: ts("first_seen_at").notNull().defaultNow(),
     lastSeenAt: ts("last_seen_at").notNull().defaultNow(),
+    /** Ya no funciona: marcado por un usuario ("usuario") o porque en el grupo lo dijeron ("grupo"). */
+    expiredAt: ts("expired_at"),
+    expiredReason: text("expired_reason"),
   },
   (t) => [uniqueIndex("deal_coupons_code_store_uq").on(t.code, t.storeKey), index("deal_coupons_seen_idx").on(t.lastSeenAt.desc())],
 );

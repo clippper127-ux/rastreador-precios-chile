@@ -52,7 +52,8 @@ export function toRawPost(m: Api.Message): RawPost | undefined {
   }
   if (!text.trim() && !links.size) return undefined;
   const reactions = (m.reactions?.results ?? []).reduce((n, r) => n + (r.count ?? 0), 0);
-  return { id: m.id, postedAt: new Date(m.date * 1000), text, links: [...links], reactions, replies: m.replies?.replies ?? 0 };
+  const replyTo = m.replyTo instanceof Api.MessageReplyHeader ? m.replyTo.replyToMsgId : undefined;
+  return { id: m.id, postedAt: new Date(m.date * 1000), text, links: [...links], reactions, replies: m.replies?.replies ?? 0, replyTo };
 }
 
 /** Lee mensajes nuevos de todos los grupos y canales de la cuenta dedicada. */

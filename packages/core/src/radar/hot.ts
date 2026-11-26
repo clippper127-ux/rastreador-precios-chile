@@ -55,6 +55,8 @@ export interface HotInput {
   historicalMin?: number | null;
   /** Conversación en el chat: cuántos otros mensajes hablan de lo mismo en ±3 h. */
   buzz?: { count: number; word: string } | null;
+  /** Personas que respondieron pidiendo el link ("link?", "¿dónde?", "¿qué tienda?"). */
+  linkAsks?: number;
   /** El mensaje trae un link para comprar. */
   hasLink?: boolean;
 }
@@ -114,7 +116,9 @@ export function hotScore(p: HotInput, extraWords: string[] = []): HotResult {
 
   // Reacciones, respuestas y conversación solo cuentan si el mensaje parece una oferta
   // (precio, descuento, link o palabra de oferta): si no, una charla animada pasaría por oferta.
-  const looksLikeDeal = p.prices.length > 0 || d > 0 || !!p.hasLink || hits.length > 0 || p.flags.includes("error_precio");
+  const asks = p.linkAsks ?? 0;
+  // Si la gente pide el link, es que vale la pena: también cuenta como señal de oferta.
+  const looksLikeDeal = p.prices.length > 0 || d > 0 || !!p.hasLink || hits.length > 0 || p.flags.includes("error_precio") || asks > 0;
   const r = looksLikeDeal ? (p.reactions ?? 0) : 0;
   if (r >= 8) {
     score += r >= 30 ? 3 : r >= 15 ? 2 : 1;
@@ -124,6 +128,11 @@ export function hotScore(p: HotInput, extraWords: string[] = []): HotResult {
   if (rep >= 3) {
     score += rep >= 10 ? 3 : rep >= 5 ? 2 : 1;
     reasons.push(`${rep} respuestas`);
+  }
+
+  if (asks > 0) {
+    score += asks >= 3 ? 4 : asks === 2 ? 3 : 2;
+    reasons.push(asks === 1 ? "alguien pidió el link" : `${asks} personas pidieron el link`);
   }
 
   if (looksLikeDeal && p.buzz && p.buzz.count >= 4) {
@@ -190,6 +199,41 @@ export function chatBuzz(posts: { id: number; text: string; postedAt: Date }[], 
       if (n > best.count) best = { count: n, word: w };
     }
     if (best.count) out.set(p.id, best);
+  });
+  return out;
+}
+
+/** ¿El mensaje pide el link o dónde está la oferta? ("link?", "pásame el link", "¿dónde?", "¿en qué tienda?"). */
+export function isLinkAsk(text: string): boolean {
+  const t = foldText(text).replace(/[¿¡]/g, "").trim();
+  if (t.length > 60 || /https?:\/\//.test(t)) return false;
+  return /(^|\s)(el\s+)?(link|enlace|url)\s*\?|link\s*(pls|plis|please|porfa|x\s*fa|por\s*fa)|(pasa(me|n)?|manda(me|n)?|comparte(n)?|tienes|tiene|hay|deja(me|n)?|muestra(me|n)?)\s+(el\s+|un\s+|directo\s+del\s+)?(link|enlace)|^d[oó]nde\s*\?|donde\s+(es|esta|sale|lo|la)\b.*\?|en\s+que\s+(tienda|pagina|web|app)|^(que|cual)\s+tienda/.test(t);
+}
+
+/**
+ * En un chat: cuántas personas pidieron el link de cada mensaje. Cuenta la respuesta directa (reply) o, si no
+ * responde a nada, la oferta más reciente del mismo chat en los 15 min anteriores. Máx. un pedido por mensaje.
+ */
+export function linkAsksByPost(
+  posts: { id: number; externalId: number; text: string; postedAt: Date; replyTo?: number | null; isOffer: boolean }[],
+): Map<number, number> {
+  const byExt = new Map(posts.map((p) => [p.externalId, p]));
+  const sorted = [...posts].sort((a, b) => a.postedAt.getTime() - b.postedAt.getTime());
+  const out = new Map<number, number>();
+  sorted.forEach((p, i) => {
+    if (!isLinkAsk(p.text)) return;
+    let target = p.replyTo ? byExt.get(p.replyTo) : undefined;
+    if (!target) {
+      for (let j = i - 1; j >= 0; j--) {
+        const q = sorted[j]!;
+        if (p.postedAt.getTime() - q.postedAt.getTime() > 15 * 60_000) break;
+        if (q.isOffer && !isLinkAsk(q.text)) {
+          target = q;
+          break;
+        }
+      }
+    }
+    if (target && target.id !== p.id) out.set(target.id, (out.get(target.id) ?? 0) + 1);
   });
   return out;
 }

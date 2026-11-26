@@ -1,10 +1,12 @@
 import {
   analyzeDealText,
   blockedByFilters,
+  couponLooksDead,
   detectStore,
   extractCoupons,
   channelHandle,
   chatBuzz,
+  linkAsksByPost,
   dealFingerprint,
   HOT_LEVELS,
   hotScore,
@@ -126,6 +128,7 @@ export async function storePosts(db: Database, channelId: string, posts: RawPost
         replies: p.replies ?? 0,
         links: buyLinks(resolved, p.links),
         fingerprint: dealFingerprint(p.text, links.map((l) => l.url)),
+        replyTo: p.replyTo ?? null,
       })
       .onConflictDoNothing()
       .returning({ id: schema.dealPosts.id });
@@ -398,7 +401,13 @@ export async function updateEngagement(db: Database, channelId: string, posts: R
   if (!recent.length) return;
   // Una sola lectura y solo se actualiza lo que cambió (antes: un UPDATE por mensaje, lento desde GitHub).
   const rows = await db
-    .select({ externalId: schema.dealPosts.externalId, reactions: schema.dealPosts.reactions, replies: schema.dealPosts.replies, links: schema.dealPosts.links })
+    .select({
+      externalId: schema.dealPosts.externalId,
+      reactions: schema.dealPosts.reactions,
+      replies: schema.dealPosts.replies,
+      links: schema.dealPosts.links,
+      replyTo: schema.dealPosts.replyTo,
+    })
     .from(schema.dealPosts)
     .where(and(eq(schema.dealPosts.channelId, channelId), inArray(schema.dealPosts.externalId, recent.map((p) => p.id))));
   const byId = new Map(rows.map((r) => [r.externalId, r]));
@@ -407,10 +416,11 @@ export async function updateEngagement(db: Database, channelId: string, posts: R
     if (!cur) continue;
     // Solo completa links si el mensaje no tenía (no pisa los ya resueltos al guardarlo).
     const bl = cur.links.length ? [] : buyLinks(p.links, p.links);
-    if (cur.reactions === (p.reactions ?? 0) && cur.replies === (p.replies ?? 0) && !bl.length) continue;
+    const fillReply = cur.replyTo == null && p.replyTo != null;
+    if (cur.reactions === (p.reactions ?? 0) && cur.replies === (p.replies ?? 0) && !bl.length && !fillReply) continue;
     await db
       .update(schema.dealPosts)
-      .set({ reactions: p.reactions ?? 0, replies: p.replies ?? 0, ...(bl.length > 0 && { links: bl }) })
+      .set({ reactions: p.reactions ?? 0, replies: p.replies ?? 0, ...(bl.length > 0 && { links: bl }), ...(fillReply && { replyTo: p.replyTo }) })
       .where(and(eq(schema.dealPosts.channelId, channelId), eq(schema.dealPosts.externalId, p.id)));
   }
 }
@@ -435,6 +445,20 @@ export async function scoreHotPosts(db: Database): Promise<number> {
   );
   // La conversación solo cuenta en chats donde la gente escribe (no en canales automáticos).
   for (const [ch, list] of byChannel) if (groups.has(ch)) for (const [id, b] of chatBuzz(list)) buzz.set(id, b);
+  // "link?", "¿dónde?": en chats, la gente pide el link de lo que vale la pena.
+  const asks = new Map<number, number>();
+  for (const [ch, list] of byChannel) {
+    if (!groups.has(ch)) continue;
+    const marked = list.map((p) => ({
+      id: p.id,
+      externalId: p.externalId,
+      text: p.text,
+      postedAt: p.postedAt,
+      replyTo: p.replyTo,
+      isOffer: p.prices.length > 0 || p.discountPct != null || p.links.length > 0 || (p.storeLinks as unknown[]).length > 0,
+    }));
+    for (const [id, n] of linkAsksByPost(marked)) asks.set(id, n);
+  }
 
   const subs = await db
     .select({ sub: schema.dealSubscriptions, profile: schema.profiles })
@@ -504,6 +528,7 @@ export async function scoreHotPosts(db: Database): Promise<number> {
             replies: p.replies,
             historicalMin: mins.length ? Math.min(...mins) : null,
             buzz: buzz.get(p.id),
+            linkAsks: asks.get(p.id),
             hasLink: p.links.length > 0 || (p.storeLinks as unknown[]).length > 0,
           },
           profile.radarHotWords,
@@ -538,7 +563,18 @@ export async function scoreHotPosts(db: Database): Promise<number> {
 
 /** Guarda los cupones del mensaje (uno por código y tienda; si se repite, se actualiza cuándo se vio). */
 export async function saveCoupons(db: Database, postId: number, channelId: string, text: string, links: string[]): Promise<number> {
-  const coupons = extractCoupons(text);
+  // "KARY10 ya no funciona": si el mensaje dice que un código conocido murió, se marca como no disponible.
+  const words = [...new Set((text.match(/[A-Za-z0-9][A-Za-z0-9_-]{3,23}/g) ?? []).map((w) => w.toUpperCase()))].filter(
+    (w) => /\d/.test(w) || w.length >= 6,
+  );
+  const dead = words.filter((w) => couponLooksDead(text, w));
+  if (dead.length) {
+    await db
+      .update(schema.dealCoupons)
+      .set({ expiredAt: new Date(), expiredReason: "grupo" })
+      .where(and(inArray(schema.dealCoupons.code, dead), isNull(schema.dealCoupons.expiredAt)));
+  }
+  const coupons = extractCoupons(text).filter((c) => !dead.includes(c.code));
   if (!coupons.length) return 0;
   const store = detectStore(text, links) ?? null;
   for (const c of coupons) {
@@ -565,6 +601,9 @@ export async function saveCoupons(db: Database, postId: number, channelId: strin
           channelId,
           benefit: sql`coalesce(excluded.benefit, ${schema.dealCoupons.benefit})`,
           minPurchase: sql`coalesce(excluded.min_purchase, ${schema.dealCoupons.minPurchase})`,
+          // Publicado de nuevo 12 h después de marcarse como no disponible: vuelve (suelen reactivarse).
+          expiredAt: sql`case when ${schema.dealCoupons.expiredAt} < now() - interval '12 hours' then null else ${schema.dealCoupons.expiredAt} end`,
+          expiredReason: sql`case when ${schema.dealCoupons.expiredAt} < now() - interval '12 hours' then null else ${schema.dealCoupons.expiredReason} end`,
         },
       });
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectStore, extractCoupons } from "./coupons";
+import { couponLooksDead, detectStore, extractCoupons } from "./coupons";
 
 describe("extractCoupons", () => {
   it("lista de cupones en negrita con beneficio y compra mínima", () => {
@@ -31,5 +31,18 @@ describe("detectStore", () => {
     expect(detectStore("sin pistas")).toBeUndefined();
     expect(detectStore("15% OFF\nCompra acá: https://meli.la/1mPuiFA")).toBe("Mercado Libre");
     expect(detectStore("usa KARY10", ["https://go.stilo.io/p/X/", "https://www.bamers.cl/products/zuecos"])).toBe("bamers.cl");
+  });
+});
+
+describe("couponLooksDead", () => {
+  it("detecta cuando dicen que ya no funciona", () => {
+    expect(couponLooksDead("el cupón KARY10 ya no funciona 😢", "KARY10")).toBe(true);
+    expect(couponLooksDead("ADI10 no me lo tomó", "ADI10")).toBe(true);
+    expect(couponLooksDead("NAPADOBLE20 agotado", "NAPADOBLE20")).toBe(true);
+    expect(couponLooksDead("Usa ADI10 y obtén 10% en Adidas", "ADI10")).toBe(false);
+  });
+  it("en mensajes largos solo mira la línea del código", () => {
+    const long = ["🎟️ *BOLSADOBLE30* : $30.000 off en compras desde $350.000", "x".repeat(200), "el cupón de ayer ya no funciona"].join("\n");
+    expect(couponLooksDead(long, "BOLSADOBLE30")).toBe(false);
   });
 });

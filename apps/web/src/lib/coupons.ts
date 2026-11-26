@@ -13,6 +13,9 @@ export interface CouponRow {
   lastSeenAt: Date;
   channelTitle: string;
   messageUrl: string | null;
+  /** No disponible: quién lo marcó ("usuario" o "grupo") y cuándo. */
+  expiredAt: Date | null;
+  expiredReason: string | null;
 }
 
 export const NO_STORE = "sin-tienda";
@@ -69,10 +72,26 @@ export async function getCoupons(userId: string, opts: { store?: string; q?: str
         lastSeenAt: c.lastSeenAt,
         channelTitle: ch.title ?? ch.handle ?? "Telegram",
         messageUrl: ch.handle && post?.externalId ? `https://t.me/${ch.handle}/${post.externalId}` : null,
+        expiredAt: c.expiredAt,
+        expiredReason: c.expiredReason,
       }),
     ),
     stores: [...counts]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => (a.name === NO_STORE ? 1 : b.name === NO_STORE ? -1 : b.count - a.count)),
   };
+}
+
+/** ¿Este cupón viene de un canal o grupo que el usuario tiene en su Radar? (para poder marcarlo). */
+export async function userCanSeeCoupon(userId: string, couponId: number): Promise<boolean> {
+  const [row] = await db()
+    .select({ id: schema.dealCoupons.id })
+    .from(schema.dealCoupons)
+    .innerJoin(
+      schema.dealSubscriptions,
+      and(eq(schema.dealSubscriptions.channelId, schema.dealCoupons.channelId), eq(schema.dealSubscriptions.userId, userId)),
+    )
+    .where(eq(schema.dealCoupons.id, couponId))
+    .limit(1);
+  return !!row;
 }

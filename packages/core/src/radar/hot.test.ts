@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeDealText } from "./index";
-import { chatBuzz, dealFingerprint, hotScore, HOT_LEVELS } from "./hot";
+import { chatBuzz, dealFingerprint, hotScore, HOT_LEVELS, isLinkAsk, linkAsksByPost } from "./hot";
 
 const score = (text: string, extra: Partial<Parameters<typeof hotScore>[0]> = {}, words: string[] = []) => {
   const a = analyzeDealText(text);
@@ -79,4 +79,23 @@ it("usa el descuento real cuando el canal lo informa", () => {
 });
 it("80% o más destaca en Normal", () => {
   expect(score("Juego Uno Dscto. 89% $5.490").score).toBeGreaterThanOrEqual(HOT_LEVELS[2].minScore);
+});
+
+describe("pedidos de link", () => {
+  it("reconoce formas de pedir el link", () => {
+    for (const t of ["link ?", "Link?", "pásame el link porfa", "Muéstrame directo del link", "¿dónde?", "en qué tienda?", "qué tienda es", "link pls"]) expect(isLinkAsk(t), t).toBe(true);
+    for (const t of ["aquí el link https://x.cl", "Háblale a @tiobunny y te mandará los links de los grupos", "compré 3 bloqueadores", "el link de ayer no funcionó, lo probé varias veces y nada de nada"]) expect(isLinkAsk(t), t).toBe(false);
+  });
+  it("asigna el pedido a la oferta respondida o a la anterior", () => {
+    const at = (m: number) => new Date(Date.UTC(2026, 10, 26, 12, m));
+    const posts = [
+      { id: 1, externalId: 100, text: "Bloqueador Eucerin a $4.990", postedAt: at(0), isOffer: true },
+      { id: 2, externalId: 101, text: "jaja", postedAt: at(1), isOffer: false },
+      { id: 3, externalId: 102, text: "link?", postedAt: at(2), isOffer: false },
+      { id: 4, externalId: 103, text: "pásame el link", postedAt: at(3), replyTo: 100, isOffer: false },
+      { id: 5, externalId: 104, text: "link?", postedAt: at(40), isOffer: false }, // muy tarde, sin oferta cerca
+    ];
+    expect(linkAsksByPost(posts).get(1)).toBe(2);
+    expect(hotScore({ text: posts[0]!.text, prices: [4990], flags: [], linkAsks: 2 }).reasons).toContain("2 personas pidieron el link");
+  });
 });

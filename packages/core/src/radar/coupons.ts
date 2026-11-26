@@ -147,3 +147,13 @@ export function extractCoupons(text: string): Coupon[] {
   }
   return [...out.values()];
 }
+
+const DEAD_RE = /no\s+(me\s+|nos\s+)?(lo\s+|la\s+)?(funciona|funcion[oó]|sirve|sirvi[oó]|aplica|aplic[oó]|toma|tom[oó]|deja|dej[oó]|valid[oó]|pesc[oó])|agotad|expir|vencid|venci[oó]|caduc|ya\s+no\s+(est[aá]|hay|funciona|sirve|aplica)|se\s+acab|termin[oó]|invalid|no\s+v[aá]lido/i;
+
+/** ¿El mensaje dice que este código ya no funciona? (en la misma línea del código o en un mensaje corto). */
+export function couponLooksDead(text: string, code: string): boolean {
+  const lines = text.split(/\n+/);
+  const withCode = lines.filter((l) => l.toUpperCase().includes(code.toUpperCase()));
+  const scope = text.length <= 200 ? [text] : withCode;
+  return scope.some((l) => DEAD_RE.test(foldText(l)));
+}
