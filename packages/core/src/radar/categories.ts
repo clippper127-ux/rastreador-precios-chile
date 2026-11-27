@@ -25,7 +25,7 @@ export const DEAL_CATEGORIES = {
   },
   tecnologia: {
     label: "Tecnología",
-    words: ["notebook", "laptop", "celular", "smartphone", "iphone", "galaxy", "xiaomi", "tablet", "ipad", "audifonos", "airpods", "monitor", "tv", "televisor", "smart tv", "consola", "ps5", "playstation", "xbox", "nintendo", "switch", "cable", "cargador", "mouse", "teclado", "ssd", "disco duro", "pendrive", "parlante", "smartwatch", "camara", "impresora", "router", "gamer", "memoria ram", "power bank"],
+    words: ["notebook", "laptop", "celular", "smartphone", "iphone", "galaxy", "xiaomi", "tablet", "ipad", "audifonos", "airpods", "monitor", "tv", "televisor", "smart tv", "consola", "ps5", "playstation", "xbox", "nintendo", "switch", "cable", "cargador", "mouse", "teclado", "ssd", "disco duro", "pendrive", "parlante", "smartwatch", "motorola", "huawei", "honor", "oppo", "realme", "pixel", "razr", "lenovo", "asus", "acer", "hp", "dell", "camara", "impresora", "router", "gamer", "memoria ram", "power bank"],
   },
   electrohogar: {
     label: "Electrohogar",

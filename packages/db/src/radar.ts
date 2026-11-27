@@ -7,6 +7,7 @@ import {
   channelHandle,
   chatBuzz,
   linkAsksByPost,
+  suspiciousDiscount,
   dealFingerprint,
   HOT_LEVELS,
   hotScore,
@@ -278,6 +279,9 @@ export async function notifyDealMatches(db: Database, appUrl: string, transport:
       `📣 ${channel.title ?? "Radar"}`,
       ...match.reasons.map((r) => `• ${r}`),
       `🏬 Tienda: ${storeName ?? "el mensaje no la dice (revisa el mensaje original)"}`,
+      suspiciousDiscount(post.text, post.prices, post.discountPct ?? 0)
+        ? "⚠️ Descuento dudoso: el precio anterior parece inflado; compara antes de comprar."
+        : "",
       coupons.length ? `🎟️ Cupones: ${coupons.map((c) => c.code).join(", ")} → ${app}/cupones` : "",
       post.prices.length ? `Precios: ${post.prices.map((p) => formatCLP(p)).join(" · ")}` : "",
       "",

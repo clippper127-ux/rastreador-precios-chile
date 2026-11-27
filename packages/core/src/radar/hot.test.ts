@@ -99,3 +99,28 @@ describe("pedidos de link", () => {
     expect(hotScore({ text: posts[0]!.text, prices: [4990], flags: [], linkAsks: 2 }).reasons).toContain("2 personas pidieron el link");
   });
 });
+
+describe("descuentos sobre precios inflados", () => {
+  it("perfume con precio anterior de $1,9 millones no destaca", () => {
+    const text = [
+      "Giorgio Armani",
+      "Set Perfume Stronger With You Intensely EDP Hombre 100 ml + 15 ml",
+      "🔥 91% OFF | $ 165.990",
+      "🎯 Paris",
+      "👁 Precios Anteriores",
+      "26/11/2026 - $ 1.900.990",
+      "24/11/2026 - $ 1.615.840",
+    ].join("\n");
+    const r = score(text);
+    expect(r.score).toBeLessThan(HOT_LEVELS[3].minScore);
+    expect(r.reasons.join()).toMatch(/dudoso/);
+  });
+  it("errores de precio reales siguen destacando", () => {
+    expect(score("🐰#Tottus Dscto. 89% MATTEL GAMES Uno Juego De Cartas $5.490 ->  $597 (89%)").score).toBeGreaterThanOrEqual(HOT_LEVELS[2].minScore);
+    expect(score("Dscto. 99% Trial Camisa Hombre Formal $48.990 -> $25 (99%)").score).toBeGreaterThanOrEqual(HOT_LEVELS[2].minScore);
+    expect(score("Bolso Deportivo Sparta 🔥 80% OFF (67% Real) | $ 15.990 Precios Anteriores $ 47.990").reasons.join()).not.toMatch(/dudoso/);
+  });
+  it("tecnología cara con descuento moderado no se marca", () => {
+    expect(score("Notebook Lenovo 60% OFF $1.299.990 -> $519.990").reasons.join()).not.toMatch(/dudoso/);
+  });
+});

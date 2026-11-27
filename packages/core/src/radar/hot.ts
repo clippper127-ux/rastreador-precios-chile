@@ -1,4 +1,5 @@
 import { foldText } from "../search";
+import { dealCategories, type DealCategory } from "./categories";
 
 /** Minúsculas, sin tildes, solo letras y números separados por un espacio. */
 function normalizeText(s: string): string {
@@ -84,7 +85,10 @@ export function hotScore(p: HotInput, extraWords: string[] = []): HotResult {
   let score = 0;
   const reasons: string[] = [];
 
-  const d = p.discountPct ?? 0;
+  // Descuento sobre un "precio anterior" inflado (p. ej. perfume de $1.900.990 "91% OFF" a $165.990): no cuenta.
+  const inflated = suspiciousDiscount(p.text, p.prices, p.discountPct ?? 0);
+  const d = inflated ? 0 : (p.discountPct ?? 0);
+  if (inflated) reasons.push(`descuento dudoso: ${inflated}`);
   if (d >= 40) {
     // 90 % o más casi siempre es un error de precio (p. ej. $24.990 → $25).
     // 80 %+ ya es oferta destacada por sí sola en sensibilidad Normal.
@@ -93,7 +97,7 @@ export function hotScore(p: HotInput, extraWords: string[] = []): HotResult {
   }
 
   // Precio antes → después en el mismo mensaje (solo si hay 2 o 3 precios: con más suele ser una lista).
-  if (p.prices.length >= 2 && p.prices.length <= 3) {
+  if (!inflated && p.prices.length >= 2 && p.prices.length <= 3) {
     const lo = Math.min(...p.prices);
     const hi = Math.max(...p.prices);
     const ratio = lo / hi;
@@ -236,4 +240,39 @@ export function linkAsksByPost(
     if (target && target.id !== p.id) out.set(target.id, (out.get(target.id) ?? 0) + 1);
   });
   return out;
+}
+
+/**
+ * Precio máximo razonable por categoría (CLP). Un "precio anterior" sobre esto casi siempre es un precio
+ * de lista inflado para mostrar un descuento grande (no un precio real al que se vendió).
+ */
+const PRICE_CAP: Partial<Record<DealCategory, number>> = {
+  ropa_interior: 150_000,
+  ropa: 1_200_000,
+  calzado: 500_000,
+  belleza: 400_000,
+  salud: 300_000,
+  supermercado: 300_000,
+  mascotas: 300_000,
+  juguetes: 800_000,
+};
+
+/**
+ * ¿El descuento parece calculado sobre un precio inflado? Devuelve el motivo, o undefined si se ve real.
+ * - Precio anterior imposible para la categoría (perfume de $1,9 millones).
+ * - 85 %+ de descuento que deja el producto todavía sobre $50.000: los errores de precio reales lo dejan
+ *   casi regalado ($597, $25); un "91 % OFF" a $165.990 casi siempre es un precio anterior inflado.
+ */
+export function suspiciousDiscount(text: string, prices: number[], discountPct: number): string | undefined {
+  if (prices.length < 2 && discountPct < 85) return undefined;
+  const now = Math.min(...prices);
+  const before = Math.max(...prices);
+  // Con capacidad en GB/TB es tecnología (un "Razr color café" no es supermercado): sin tope por categoría.
+  const cats = /\d\s?(gb|tb)/i.test(text) ? [] : dealCategories(text);
+  const caps = cats.map((c) => PRICE_CAP[c]).filter((n): n is number => n != null);
+  // Solo si TODAS las categorías detectadas tienen tope (un "perfume + notebook" no se juzga).
+  if (caps.length && caps.length === cats.length && before > Math.max(...caps)) return "el precio anterior parece inflado";
+  const pct = discountPct || (before > 0 ? Math.round((1 - now / before) * 100) : 0);
+  if (pct >= 85 && now >= 50_000) return "el precio anterior parece inflado";
+  return undefined;
 }
