@@ -268,7 +268,7 @@ export function suspiciousDiscount(text: string, prices: number[], discountPct: 
   const now = Math.min(...prices);
   const before = Math.max(...prices);
   // Con capacidad en GB/TB es tecnología (un "Razr color café" no es supermercado): sin tope por categoría.
-  const cats = /\d\s?(gb|tb)/i.test(text) ? [] : dealCategories(text);
+  const cats = /\d\s?(gb|tb)\b/i.test(text) ? [] : dealCategories(text);
   const caps = cats.map((c) => PRICE_CAP[c]).filter((n): n is number => n != null);
   // Solo si TODAS las categorías detectadas tienen tope (un "perfume + notebook" no se juzga).
   if (caps.length && caps.length === cats.length && before > Math.max(...caps)) return "el precio anterior parece inflado";
