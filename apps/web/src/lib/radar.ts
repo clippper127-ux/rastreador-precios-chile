@@ -1,5 +1,6 @@
 import "server-only";
 import { DEAL_CATEGORIES, dealCategories } from "@rastreador/core";
+import { recentSummaries } from "@rastreador/db/summaries";
 import { schema } from "@rastreador/db";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "./db";
@@ -90,5 +91,15 @@ export async function getRadar(userId: string) {
     catsExclude: profile?.radarCatsExclude ?? [],
     blockWords: profile?.radarBlockWords ?? [],
     telegramLinked: !!profile?.telegramChatId,
+    summaries: (await recentSummaries(d, userId)).map(({ s: x, title, handle }) => ({
+      id: x.id,
+      chat: title ?? handle ?? "Chat",
+      title: x.title,
+      bullets: x.bullets,
+      messageCount: x.messageCount,
+      createdAt: x.createdAt,
+      url: handle && x.firstExternalId ? `https://t.me/${handle}/${x.firstExternalId}` : null,
+    })),
+    aiEnabled: !!process.env.LLM_API_KEY?.trim(),
   };
 }

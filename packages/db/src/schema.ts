@@ -445,6 +445,29 @@ export const dealCoupons = pgTable(
   (t) => [uniqueIndex("deal_coupons_code_store_uq").on(t.code, t.storeKey), index("deal_coupons_seen_idx").on(t.lastSeenAt.desc())],
 );
 
+/** Resúmenes con IA de temas que se calentaron en un chat ("están hablando de la tarjeta Mach..."). */
+export const dealSummaries = pgTable(
+  "deal_summaries",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    channelId: text("channel_id")
+      .notNull()
+      .references(() => dealChannels.id, { onDelete: "cascade" }),
+    /** Palabra que agrupó la conversación ("mach", "creatina"). */
+    topic: text("topic").notNull(),
+    title: text("title").notNull(),
+    bullets: text("bullets").array().notNull().default(sql`'{}'::text[]`),
+    /** La IA dijo que tiene información concreta (si no, no se avisa ni se muestra). */
+    useful: boolean("useful").notNull().default(false),
+    messageCount: integer("message_count").notNull().default(0),
+    /** Primer mensaje del tema (para el link al chat). */
+    firstExternalId: bigint("first_external_id", { mode: "number" }),
+    notifiedAt: ts("notified_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("deal_summaries_channel_idx").on(t.channelId, t.createdAt.desc())],
+);
+
 export const dealMatches = pgTable(
   "deal_matches",
   {

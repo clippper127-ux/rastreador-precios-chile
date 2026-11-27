@@ -11,7 +11,8 @@
     "./telegram": "./src/telegram.ts",
     "./radar": "./src/radar.ts",
     "./collections": "./src/collections.ts",
-    "./solotodo": "./src/solotodo.ts"
+    "./solotodo": "./src/solotodo.ts",
+    "./summaries": "./src/summaries.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

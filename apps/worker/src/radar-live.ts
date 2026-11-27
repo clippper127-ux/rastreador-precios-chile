@@ -1,6 +1,7 @@
 import { createDb, schema } from "@rastreador/db";
 import { httpTransport } from "@rastreador/db/alerts";
 import { ingestReaderChat, notifyDealMatches, pollPublicChannels, readerChatState, scoreHotPosts } from "@rastreador/db/radar";
+import { summarizeHotTopics } from "@rastreador/db/summaries";
 import { processTelegramUpdates } from "@rastreador/db/telegram";
 import { Api } from "telegram";
 import { env } from "./env";
@@ -117,6 +118,9 @@ async function main() {
       await refreshChats();
       const r = await readChats(db, client);
       await pollPublicChannels(db);
+      // Temas que se calentaron en los chats → resumen con IA (si hay LLM_API_KEY).
+      const talks = await summarizeHotTopics(db, env.appUrl, transport);
+      if (talks.sent) log(`resúmenes de conversación enviados: ${talks.sent}`);
       if (r.newPosts || r.errors) log(`relectura: ${r.newPosts} mensajes perdidos recuperados, ${r.errors} errores`);
       scheduleNotify();
     } catch (err) {

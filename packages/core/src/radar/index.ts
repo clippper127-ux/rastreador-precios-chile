@@ -175,3 +175,4 @@ export * from "./hot";
 
 export * from "./categories";
 export * from "./coupons";
+export * from "./topics";

@@ -41,7 +41,49 @@ export default async function RadarPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* Mensajes */}
         <section aria-labelledby="mensajes" className="order-2 flex flex-col gap-3 lg:order-1">
-          <h2 id="mensajes" className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+          {/* Conversaciones resumidas con IA */}
+          <h2 id="conversaciones" className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            De qué se está hablando
+          </h2>
+          {!r.aiEnabled ? (
+            <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
+              Los resúmenes de conversación usan IA (Gemini, gratis). Se activan al poner la clave en <code>LLM_API_KEY</code>.
+            </p>
+          ) : !r.summaries.length ? (
+            <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
+              Cuando un tema se calienta en un chat (6 o más mensajes sobre lo mismo en una hora), aparece aquí resumido y te llega por el bot.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {r.summaries.map((s) => (
+                <li key={s.id} className="rounded-xl border bg-card p-4 shadow-soft">
+                  <p className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5 font-medium text-foreground">
+                      <MessagesSquare aria-hidden className="size-3.5" />
+                      {s.chat}
+                    </span>
+                    <time dateTime={s.createdAt.toISOString()}>{timeAgo(s.createdAt)}</time>
+                  </p>
+                  <h3 className="mt-2 font-medium">{s.title}</h3>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm">
+                    {s.bullets.map((b) => (
+                      <li key={b}>{b}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
+                    <span>{s.messageCount} mensajes · resumen hecho con IA, revisa antes de decidir</span>
+                    {s.url && (
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+                        Ver conversación <ExternalLink aria-hidden className="size-3" />
+                      </a>
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h2 id="mensajes" className="mt-4 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
             Últimos 7 días {matched.length > 0 && `· ${matched.length} para ti`}
           </h2>
           {!r.posts.length ? (
