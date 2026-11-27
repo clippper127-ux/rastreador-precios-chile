@@ -539,7 +539,9 @@ export async function scoreHotPosts(db: Database): Promise<number> {
         );
         return { p, ...r };
       })
-      .filter((c) => c.score >= level.minScore && !blockedByFilters(c.p.text, filtersOf(profile)).blocked)
+      // Solo mensajes con link para comprar: sin link es una conversación (o el aviso no te sirve para comprar).
+      .filter((c) => (c.p.links.length > 0 || (c.p.storeLinks as unknown[]).length > 0) && c.score >= level.minScore)
+      .filter((c) => !blockedByFilters(c.p.text, filtersOf(profile)).blocked)
       .sort((a, b) => b.score - a.score);
 
     for (const c of candidates) {

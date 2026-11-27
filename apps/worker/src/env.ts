@@ -6,7 +6,8 @@ config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: 
 export const env = {
   databaseUrl: process.env.DATABASE_URL,
   healthcheckUrl: process.env.HEALTHCHECK_URL,
-  appUrl: process.env.APP_URL ?? "http://localhost:3000",
+  // Los avisos se abren desde el celular: por defecto la app publicada (no localhost).
+  appUrl: process.env.APP_URL || "https://rastreador-precios-chile.vercel.app",
   telegramToken: process.env.TELEGRAM_BOT_TOKEN || undefined,
   resendApiKey: process.env.RESEND_API_KEY || undefined,
   resendFrom: process.env.RESEND_FROM || undefined,

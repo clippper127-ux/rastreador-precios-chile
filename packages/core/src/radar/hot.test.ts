@@ -124,3 +124,18 @@ describe("descuentos sobre precios inflados", () => {
     expect(score("Notebook Lenovo 60% OFF $1.299.990 -> $519.990").reasons.join()).not.toMatch(/dudoso/);
   });
 });
+
+describe("conversación sobre medios de pago", () => {
+  it("hablar de la tarjeta no es conversación sobre un producto", () => {
+    const at = (m: number) => new Date(Date.UTC(2026, 10, 27, 12, m));
+    const texts = [
+      "alguien sabe cuánto cuesta la mantención de la tarjeta Mach crédito?",
+      "Luego de agregar al carro agregas la tarjeta y te tiene que aparecer 40% con tope 20 mil",
+      "la tarjeta no cobra mantención",
+      "yo pagué con la tarjeta y me salió",
+      "la tarjeta mach es buena",
+    ];
+    const buzz = chatBuzz(texts.map((text, i) => ({ id: i + 1, text, postedAt: at(i) })));
+    expect([...buzz.values()].some((b) => b.word.startsWith("tarjeta"))).toBe(false);
+  });
+});
