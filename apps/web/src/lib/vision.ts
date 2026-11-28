@@ -29,7 +29,7 @@ Responde SOLO un JSON: {"query": "...", "ean": "...", "confidence": "alta|media|
 export async function identifyProduct(imageBase64: string, mimeType: string): Promise<PhotoGuess | null> {
   const key = process.env.LLM_API_KEY;
   if (!key) return null;
-  const model = process.env.LLM_MODEL || "gemini-2.5-flash";
+  const model = process.env.LLM_MODEL || "gemini-flash-lite-latest";
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },

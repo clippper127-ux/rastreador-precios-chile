@@ -39,7 +39,8 @@ export function llmEnabled(): boolean {
 export async function summarizeWithLlm(topic: string, messages: string[], fetchImpl: typeof fetch = fetch): Promise<SummaryResult | null> {
   const key = process.env.LLM_API_KEY?.trim();
   if (!key) return null;
-  const model = process.env.LLM_MODEL || "gemini-2.5-flash";
+  // Alias que Google mantiene apuntando al modelo liviano vigente (los nombres con versión se retiran).
+  const model = process.env.LLM_MODEL || "gemini-flash-lite-latest";
   const text = messages.map((m, i) => `${i + 1}. ${anonymize(m).replace(/\s+/g, " ").slice(0, 300)}`).join("\n");
   const res = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
